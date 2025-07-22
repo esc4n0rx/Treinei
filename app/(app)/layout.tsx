@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { BottomNavigation } from "@/components/bottom-navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { GroupProvider } from "@/contexts/GroupContext"
+import { CheckinProvider } from "@/contexts/CheckinContext"
 
 export default function AppLayout({
   children,
@@ -40,10 +41,12 @@ export default function AppLayout({
 
   return (
     <GroupProvider>
-      <div className="min-h-screen bg-background pb-20">
-        {children}
-        <BottomNavigation />
-      </div>
+      <CheckinProvider>
+        <div className="min-h-screen bg-background pb-20">
+          {children}
+          <BottomNavigation />
+        </div>
+      </CheckinProvider>
     </GroupProvider>
   )
 }
