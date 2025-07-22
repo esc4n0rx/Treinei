@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Camera, Upload, RotateCcw, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface CameraInputProps {
   onPhotoCapture: (file: File) => void
@@ -21,30 +22,50 @@ export function CameraInput({
   const [isOpen, setIsOpen] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const startCamera = async () => {
+  const startCamera = useCallback(async (mode: 'environment' | 'user') => {
+    // Parar qualquer stream existente
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop())
+    }
+
+    const constraints = {
+      video: { 
+        facingMode: { ideal: mode },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    }
+
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      })
-      
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
       setStream(mediaStream)
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
       }
+      setFacingMode(mode)
       setIsOpen(true)
     } catch (error) {
-      console.error('Erro ao acessar câmera:', error)
-      alert('Não foi possível acessar a câmera. Use a opção de galeria.')
+      console.error(`Erro ao acessar câmera com facingMode: ${mode}`, error)
+      return false
+    }
+    return true
+  }, [stream])
+
+
+  const handleCameraOpen = async () => {
+    // Tenta primeiro a câmera traseira, se falhar, tenta a frontal.
+    const success = await startCamera('environment')
+    if (!success) {
+      const fallbackSuccess = await startCamera('user')
+      if (!fallbackSuccess) {
+        toast.error('Não foi possível acessar a câmera. Verifique as permissões e tente usar a galeria.')
+      }
     }
   }
 
@@ -57,16 +78,9 @@ export function CameraInput({
     setCapturedPhoto(null)
   }
 
-  const switchCamera = async () => {
+  const switchCamera = () => {
     const newFacingMode = facingMode === 'user' ? 'environment' : 'user'
-    setFacingMode(newFacingMode)
-    
-    if (stream) {
-      stopCamera()
-      setTimeout(() => {
-        startCamera()
-      }, 100)
-    }
+    startCamera(newFacingMode)
   }
 
   const capturePhoto = () => {
@@ -83,14 +97,13 @@ export function CameraInput({
     
     context.drawImage(video, 0, 0)
     
-    const dataURL = canvas.toDataURL('image/jpeg', 0.8)
+    const dataURL = canvas.toDataURL('image/jpeg', 0.9)
     setCapturedPhoto(dataURL)
   }
 
   const confirmPhoto = () => {
     if (!capturedPhoto) return
 
-    // Converter dataURL para File
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -102,7 +115,7 @@ export function CameraInput({
         onPhotoCapture(file)
         stopCamera()
       }
-    }, 'image/jpeg', 0.8)
+    }, 'image/jpeg', 0.9)
   }
 
   const retakePhoto = () => {
@@ -113,6 +126,8 @@ export function CameraInput({
     const file = e.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
       onPhotoCapture(file)
+    } else if (file) {
+      toast.error("Por favor, selecione um arquivo de imagem válido.")
     }
   }
 
@@ -130,6 +145,7 @@ export function CameraInput({
                 ref={videoRef}
                 autoPlay
                 playsInline
+                muted
                 className="w-full h-full object-cover"
               />
               <canvas
@@ -141,7 +157,7 @@ export function CameraInput({
             <img
               src={capturedPhoto}
               alt="Foto capturada"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           )}
         </div>
@@ -215,7 +231,7 @@ export function CameraInput({
 
       <div className="grid grid-cols-2 gap-3">
         <Button
-          onClick={startCamera}
+          onClick={handleCameraOpen}
           variant="outline"
           className="glass hover:bg-white/10 h-16 flex-col space-y-2 bg-transparent"
           disabled={disabled}

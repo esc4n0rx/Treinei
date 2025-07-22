@@ -2,7 +2,7 @@
 import { supabase } from '../supabase'
 import { Group, GroupMember, CreateGroupData, JoinGroupData } from '@/types/group'
 import { hashPassword, verifyPassword } from '../auth'
-import { uploadGroupLogo } from '../storage'
+import { uploadToCloudinary } from '../cloudinary' // Import direto
 
 /**
  * Busca todos os grupos do usuário
@@ -108,13 +108,11 @@ export async function createGroup(data: CreateGroupData, userId: string) {
 
     console.log('Iniciando criação de grupo:', { nome, tipo, temLogo: !!logo })
 
-    // Hash da senha se o grupo for privado
     let senhaHash = null
     if (tipo === 'privado' && senha) {
       senhaHash = await hashPassword(senha)
     }
 
-    // Criar o grupo primeiro sem a logo
     const { data: groupData, error: groupError } = await supabase
       .from('treinei_grupos')
       .insert({
@@ -126,6 +124,70 @@ export async function createGroup(data: CreateGroupData, userId: string) {
         max_membros,
         status: 'ativo'
       })
+      .select('id, nome')
+      .single()
+
+    if (groupError || !groupData) {
+      console.error('Erro ao criar grupo no DB:', groupError)
+      return { success: false, error: 'Erro ao criar grupo' }
+    }
+
+    console.log('Grupo criado com ID:', groupData.id)
+
+    let logoUrl = null
+    if (logo) {
+      try {
+        console.log('Iniciando upload da logo para Cloudinary...')
+        const bytes = await logo.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+
+        const result = await uploadToCloudinary(buffer, {
+          folder: 'treinei/grupos',
+          public_id: `grupo_${groupData.id}_${Date.now()}`,
+          transformation: {
+            width: 400,
+            height: 400,
+            crop: 'fill',
+            gravity: 'face',
+            quality: 'auto:good',
+            fetch_format: 'auto'
+          }
+        })
+        
+        logoUrl = result.secure_url
+        console.log('Logo enviada com sucesso:', logoUrl)
+
+        const { error: updateError } = await supabase
+          .from('treinei_grupos')
+          .update({ logo_url: logoUrl })
+          .eq('id', groupData.id)
+
+        if (updateError) {
+          console.error('Erro ao atualizar grupo com URL da logo:', updateError)
+        }
+      } catch (uploadError) {
+        console.error('Erro no upload da logo:', uploadError)
+      }
+    }
+
+    const { error: memberError } = await supabase
+      .from('treinei_grupos_membros')
+      .insert({
+        grupo_id: groupData.id,
+        usuario_id: userId,
+        papel: 'administrador',
+        status: 'ativo'
+      })
+
+    if (memberError) {
+      console.error('Erro ao adicionar administrador:', memberError)
+      await supabase.from('treinei_grupos').delete().eq('id', groupData.id)
+      return { success: false, error: 'Erro ao configurar administrador do grupo' }
+    }
+    
+    // Buscar os dados completos do grupo para retornar
+    const { data: finalGroup, error: finalGroupError } = await supabase
+      .from('treinei_grupos')
       .select(`
         id,
         nome,
@@ -141,72 +203,23 @@ export async function createGroup(data: CreateGroupData, userId: string) {
           avatar_url
         )
       `)
-      .single()
+      .eq('id', groupData.id)
+      .single();
 
-    if (groupError) {
-      console.error('Erro ao criar grupo:', groupError)
-      return { success: false, error: 'Erro ao criar grupo' }
-    }
-
-    console.log('Grupo criado com sucesso:', groupData.id)
-
-    let logoUrl = null
-    
-    // Upload da logo se fornecida
-    if (logo) {
-      console.log('Iniciando upload da logo...')
-      const uploadResult = await uploadGroupLogo(logo, groupData.id)
-      
-      if (uploadResult.success && uploadResult.url) {
-        logoUrl = uploadResult.url
-        console.log('Logo uploadada com sucesso:', logoUrl)
-        
-        // Atualizar grupo com URL da logo
-        const { error: updateError } = await supabase
-          .from('treinei_grupos')
-          .update({ logo_url: logoUrl })
-          .eq('id', groupData.id)
-
-        if (updateError) {
-          console.error('Erro ao atualizar logo:', updateError)
-        } else {
-          console.log('Logo URL salva no banco de dados')
-        }
-      } else {
-        console.error('Erro no upload da logo:', uploadResult.error)
-      }
-    }
-
-    // Adicionar o criador como administrador do grupo
-    const { error: memberError } = await supabase
-      .from('treinei_grupos_membros')
-      .insert({
-        grupo_id: groupData.id,
-        usuario_id: userId,
-        papel: 'administrador',
-        status: 'ativo'
-      })
-
-    if (memberError) {
-      console.error('Erro ao adicionar administrador:', memberError)
-      // Se falhou em adicionar o membro, deletar o grupo
-      await supabase.from('treinei_grupos').delete().eq('id', groupData.id)
-      return { success: false, error: 'Erro ao configurar grupo' }
-    }
-
-    const finalGroup = {
-      ...groupData,
-      logo_url: logoUrl
+    if (finalGroupError) {
+      console.error('Erro ao buscar dados finais do grupo:', finalGroupError);
+      return { success: false, error: 'Grupo criado, mas houve um erro ao buscar os dados.' };
     }
 
     console.log('Grupo finalizado:', finalGroup)
-
     return { success: true, group: finalGroup }
+
   } catch (error) {
-    console.error('Erro ao criar grupo:', error)
-    return { success: false, error: 'Erro interno' }
+    console.error('Erro geral ao criar grupo:', error)
+    return { success: false, error: 'Erro interno do servidor' }
   }
 }
+
 
 /**
  * Entrar em um grupo

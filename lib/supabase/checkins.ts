@@ -1,6 +1,7 @@
+// lib/supabase/checkins.ts
 import { supabase } from '../supabase'
 import { Checkin, CreateCheckinData } from '@/types/checkin'
-import { uploadCheckinPhoto} from '../storage'
+import { uploadToCloudinary } from '../cloudinary' // Import direto
 
 /**
  * Busca check-ins de um grupo específico
@@ -97,14 +98,27 @@ export async function createCheckin(data: CreateCheckinData, userId: string) {
     console.log('Nenhum check-in duplicado encontrado')
 
     // Upload da foto
-    console.log('Iniciando upload da foto...')
-    const uploadResult = await uploadCheckinPhoto(foto, userId, grupo_id)
+    console.log('Iniciando upload da foto para Cloudinary...')
+    const bytes = await foto.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    const uploadResult = await uploadToCloudinary(buffer, {
+      folder: 'treinei/checkins',
+      public_id: `checkin_${userId}_${grupo_id}_${Date.now()}`,
+      transformation: {
+        width: 1080,
+        height: 1080,
+        crop: 'limit',
+        quality: 'auto:good',
+        fetch_format: 'auto'
+      }
+    })
     
-    if (!uploadResult.success || !uploadResult.url) {
-      console.error('Falha no upload:', uploadResult.error)
-      return { success: false, error: uploadResult.error || 'Erro no upload da foto' }
+    if (!uploadResult || !uploadResult.secure_url) {
+      console.error('Falha no upload:', uploadResult)
+      return { success: false, error: 'Erro no upload da foto' }
     }
-    console.log('Upload da foto realizado com sucesso:', uploadResult.url)
+    console.log('Upload da foto realizado com sucesso:', uploadResult.secure_url)
 
     // Criar check-in no banco
     console.log('Criando registro no banco...')
@@ -113,7 +127,7 @@ export async function createCheckin(data: CreateCheckinData, userId: string) {
       .insert({
         usuario_id: userId,
         grupo_id,
-        foto_url: uploadResult.url,
+        foto_url: uploadResult.secure_url,
         observacao: observacao || null,
         local: local || null,
         data_checkin: data_checkin || new Date().toISOString()
