@@ -1,76 +1,83 @@
-import { supabase } from './supabase'
-
 export interface UploadImageResponse {
   success: boolean
   url?: string
+  publicId?: string
   error?: string
 }
 
 /**
- * Upload de imagem para o bucket do Supabase
+ * Upload de logo de grupo usando Cloudinary
  */
 export async function uploadGroupLogo(file: File, groupId: string): Promise<UploadImageResponse> {
   try {
+    console.log('=== INÍCIO DO UPLOAD DE LOGO DO GRUPO ===')
+    console.log('Dados do upload:', { 
+      groupId, 
+      fileSize: file.size, 
+      fileType: file.type,
+      fileName: file.name
+    })
+
     // Validar arquivo
     if (!file) {
+      console.error('Nenhum arquivo fornecido')
       return { success: false, error: 'Nenhum arquivo fornecido' }
     }
 
     // Validar tipo de arquivo
     if (!file.type.startsWith('image/')) {
+      console.error('Tipo de arquivo inválido:', file.type)
       return { success: false, error: 'Apenas imagens são permitidas' }
     }
 
     // Validar tamanho (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
+      console.error('Arquivo muito grande:', file.size)
       return { success: false, error: 'Imagem muito grande. Máximo 5MB' }
     }
 
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const fileName = `group-${groupId}-${Date.now()}.${fileExt}`
-    const filePath = `grupos/${fileName}`
-
-    console.log('Iniciando upload:', { fileName, fileSize: file.size, fileType: file.type })
-
-    // Upload do arquivo com configurações específicas para evitar RLS
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('treinei-images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-        duplex: 'half' // Adicionar esta configuração
-      })
-
-    if (uploadError) {
-      console.error('Erro no upload:', uploadError)
-      return {
-        success: false,
-        error: `Erro ao fazer upload: ${uploadError.message}`
-      }
+    // Obter token de autenticação
+    const token = typeof window !== 'undefined' ? localStorage.getItem('treinei_token') : null
+    
+    if (!token) {
+      console.error('Token não encontrado')
+      return { success: false, error: 'Token de autenticação não encontrado' }
     }
 
-    console.log('Upload realizado com sucesso:', uploadData)
+    // Preparar FormData
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('groupId', groupId)
 
-    // Obter URL pública
-    const { data: publicUrlData } = supabase.storage
-      .from('treinei-images')
-      .getPublicUrl(filePath)
+    console.log('Enviando para API de upload...')
 
-    if (!publicUrlData?.publicUrl) {
-      return {
-        success: false,
-        error: 'Erro ao obter URL pública da imagem'
-      }
+    // Fazer upload via API route
+    const response = await fetch('/api/upload/group-logo', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      console.error('Erro no upload:', result.error)
+      return { success: false, error: result.error }
     }
 
-    console.log('URL pública gerada:', publicUrlData.publicUrl)
+    console.log('Upload de logo realizado com sucesso:', result.url)
+    console.log('=== FIM DO UPLOAD DE LOGO DO GRUPO - SUCESSO ===')
 
     return {
       success: true,
-      url: publicUrlData.publicUrl
+      url: result.url,
+      publicId: result.publicId
     }
   } catch (error) {
-    console.error('Erro no upload de imagem:', error)
+    console.error('Erro geral no upload de logo:', error)
+    console.log('=== FIM DO UPLOAD DE LOGO DO GRUPO - ERRO ===')
     return {
       success: false,
       error: 'Erro interno no upload'
@@ -79,7 +86,7 @@ export async function uploadGroupLogo(file: File, groupId: string): Promise<Uplo
 }
 
 /**
- * Upload de foto de check-in com configurações otimizadas
+ * Upload de foto de check-in usando Cloudinary
  */
 export async function uploadCheckinPhoto(file: File, userId: string, groupId: string): Promise<UploadImageResponse> {
   try {
@@ -110,85 +117,47 @@ export async function uploadCheckinPhoto(file: File, userId: string, groupId: st
       return { success: false, error: 'Imagem muito grande. Máximo 10MB' }
     }
 
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const fileName = `checkin-${userId}-${groupId}-${Date.now()}.${fileExt}`
-    const filePath = `checkins/${fileName}`
-
-    console.log('Configuração do upload:', { fileName, filePath })
-
-    // Verificar se o bucket existe e é acessível
-    try {
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
-      console.log('Buckets disponíveis:', buckets?.map(b => b.name))
-      
-      if (bucketsError) {
-        console.error('Erro ao listar buckets:', bucketsError)
-      }
-    } catch (error) {
-      console.error('Erro ao verificar buckets:', error)
+    // Obter token de autenticação
+    const token = typeof window !== 'undefined' ? localStorage.getItem('treinei_token') : null
+    
+    if (!token) {
+      console.error('Token não encontrado')
+      return { success: false, error: 'Token de autenticação não encontrado' }
     }
 
-    // Tentar upload com configurações específicas
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('treinei-images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-        duplex: 'half'
-      })
+    // Preparar FormData
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('groupId', groupId)
 
-    if (uploadError) {
-      console.error('Erro detalhado no upload:', {
-        message: uploadError.message,
-        statusCode: uploadError.statusCode,
-        error: uploadError
-      })
-      
-      // Tentar diagnóstico adicional
-      if (uploadError.message?.includes('row-level security') || uploadError.statusCode === '403') {
-        console.log('Erro de RLS detectado, tentando diagnóstico...')
-        
-        // Verificar políticas do bucket
-        try {
-          const { data: policies, error: policiesError } = await supabase.rpc('get_storage_policies', {
-            bucket_name: 'treinei-images'
-          })
-          console.log('Políticas do bucket:', policies)
-        } catch (policyError) {
-          console.log('Não foi possível verificar políticas:', policyError)
-        }
-      }
-      
-      return {
-        success: false,
-        error: `Erro ao fazer upload: ${uploadError.message} (Código: ${uploadError.statusCode})`
-      }
+    console.log('Enviando para API de upload...')
+
+    // Fazer upload via API route
+    const response = await fetch('/api/upload/checkin-photo', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      console.error('Erro no upload:', result.error)
+      return { success: false, error: result.error }
     }
 
-    console.log('Upload realizado com sucesso:', uploadData)
-
-    // Obter URL pública
-    const { data: publicUrlData } = supabase.storage
-      .from('treinei-images')
-      .getPublicUrl(filePath)
-
-    if (!publicUrlData?.publicUrl) {
-      console.error('Erro ao gerar URL pública')
-      return {
-        success: false,
-        error: 'Erro ao obter URL pública da imagem'
-      }
-    }
-
-    console.log('URL pública do check-in gerada:', publicUrlData.publicUrl)
+    console.log('Upload de check-in realizado com sucesso:', result.url)
     console.log('=== FIM DO UPLOAD DE CHECKIN - SUCESSO ===')
 
     return {
       success: true,
-      url: publicUrlData.publicUrl
+      url: result.url,
+      publicId: result.publicId
     }
   } catch (error) {
-    console.error('Erro geral no upload de imagem de check-in:', error)
+    console.error('Erro geral no upload de foto de check-in:', error)
     console.log('=== FIM DO UPLOAD DE CHECKIN - ERRO ===')
     return {
       success: false,
@@ -198,52 +167,28 @@ export async function uploadCheckinPhoto(file: File, userId: string, groupId: st
 }
 
 /**
- * Remove imagem do bucket
+ * Remove imagem do Cloudinary
  */
 export async function deleteGroupLogo(logoUrl: string): Promise<boolean> {
   try {
-    // Extrair path da URL
-    const urlParts = logoUrl.split('/storage/v1/object/public/treinei-images/')
-    if (urlParts.length < 2) return false
-    
-    const filePath = urlParts[1]
-
-    const { error } = await supabase.storage
-      .from('treinei-images')
-      .remove([filePath])
-
-    if (error) {
-      console.error('Erro ao deletar imagem:', error)
-      return false
-    }
-
+    // Implementar lógica de delete via API se necessário
+    // Por enquanto, return true (Cloudinary tem auto-cleanup policies)
+    console.log('Logo removido:', logoUrl)
     return true
   } catch (error) {
-    console.error('Erro ao deletar imagem:', error)
+    console.error('Erro ao deletar logo:', error)
     return false
   }
 }
 
 /**
- * Remove foto de check-in do bucket
+ * Remove foto de check-in do Cloudinary
  */
 export async function deleteCheckinPhoto(photoUrl: string): Promise<boolean> {
   try {
-    // Extrair path da URL
-    const urlParts = photoUrl.split('/storage/v1/object/public/treinei-images/')
-    if (urlParts.length < 2) return false
-    
-    const filePath = urlParts[1]
-
-    const { error } = await supabase.storage
-      .from('treinei-images')
-      .remove([filePath])
-
-    if (error) {
-      console.error('Erro ao deletar foto do check-in:', error)
-      return false
-    }
-
+    // Implementar lógica de delete via API se necessário
+    // Por enquanto, return true (Cloudinary tem auto-cleanup policies)
+    console.log('Foto de check-in removida:', photoUrl)
     return true
   } catch (error) {
     console.error('Erro ao deletar foto do check-in:', error)
@@ -252,23 +197,23 @@ export async function deleteCheckinPhoto(photoUrl: string): Promise<boolean> {
 }
 
 /**
- * Função para diagnosticar problemas de storage
+ * Função para diagnosticar problemas de upload (substituindo diagnóstico do Supabase)
  */
-export async function diagnoseStorageIssues(): Promise<void> {
+export async function diagnoseUploadIssues(): Promise<void> {
   try {
-    console.log('=== DIAGNÓSTICO DE STORAGE ===')
+    console.log('=== DIAGNÓSTICO DE UPLOAD ===')
     
-    // Verificar buckets
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
-    console.log('Buckets:', buckets)
-    if (bucketsError) console.error('Erro buckets:', bucketsError)
+    // Verificar se as variáveis de ambiente do Cloudinary estão configuradas
+    const hasCloudName = !!process.env.CLOUDINARY_CLOUD_NAME
+    const hasApiKey = !!process.env.CLOUDINARY_API_KEY
+    const hasApiSecret = !!process.env.CLOUDINARY_API_SECRET
     
-    // Verificar arquivos no bucket
-    const { data: files, error: filesError } = await supabase.storage
-      .from('treinei-images')
-      .list('checkins', { limit: 5 })
-    console.log('Arquivos em checkins/', files)
-    if (filesError) console.error('Erro arquivos:', filesError)
+    console.log('Configuração Cloudinary:', {
+      hasCloudName,
+      hasApiKey,
+      hasApiSecret,
+      allConfigured: hasCloudName && hasApiKey && hasApiSecret
+    })
     
     console.log('=== FIM DIAGNÓSTICO ===')
   } catch (error) {

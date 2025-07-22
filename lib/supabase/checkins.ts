@@ -1,6 +1,6 @@
 import { supabase } from '../supabase'
 import { Checkin, CreateCheckinData } from '@/types/checkin'
-import { uploadCheckinPhoto, diagnoseStorageIssues } from '../storage'
+import { uploadCheckinPhoto} from '../storage'
 
 /**
  * Busca check-ins de um grupo específico
@@ -95,11 +95,6 @@ export async function createCheckin(data: CreateCheckinData, userId: string) {
       return { success: false, error: 'Você já fez check-in hoje neste grupo' }
     }
     console.log('Nenhum check-in duplicado encontrado')
-
-    // Executar diagnóstico se necessário
-    if (process.env.NODE_ENV === 'development') {
-      await diagnoseStorageIssues()
-    }
 
     // Upload da foto
     console.log('Iniciando upload da foto...')
