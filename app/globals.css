@@ -83,14 +83,12 @@
   }
 }
 
-/* Você pode ter outros imports e classes customizadas aqui embaixo sem problemas */
-@import "tw-animate-css";
-@custom-variant dark (&:is(.dark *));
+@layer components {
+  .glass {
+    @apply backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10;
+  }
 
-.glass {
-  @apply backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10;
-}
-
-.glass-card {
-  @apply backdrop-blur-lg bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5;
+  .glass-card {
+    @apply backdrop-blur-lg bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5;
+  }
 }
