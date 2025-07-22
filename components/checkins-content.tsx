@@ -11,8 +11,30 @@ import { GroupEmptyState } from "@/components/group-empty-state"
 import { Camera, Heart, MessageCircle, Clock, Calendar, MapPin, Loader2, Building } from "lucide-react"
 import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
-import { format, parseISO } from "date-fns"
-import { ptBR } from "date-fns/locale"
+
+
+const formatCheckinDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+      return diffInMinutes <= 0 ? 'Agora' : `${diffInMinutes}m atrás`
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h atrás`
+    } else {
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = date.toLocaleDateString('pt-BR', { month: 'short' })
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${day} de ${month} às ${hours}:${minutes}`
+    }
+  } catch (error) {
+    return 'Data inválida'
+  }
+}
 
 export function CheckinsContent() {
   const [checkinModalOpen, setCheckinModalOpen] = useState(false)
@@ -43,25 +65,6 @@ export function CheckinsContent() {
 
   if (!hasGroups) {
     return <GroupEmptyState />
-  }
-
-  const formatCheckinDate = (dateString: string) => {
-    try {
-      const date = parseISO(dateString)
-      const now = new Date()
-      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-      
-      if (diffInHours < 1) {
-        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-        return diffInMinutes <= 0 ? 'Agora' : `${diffInMinutes}m atrás`
-      } else if (diffInHours < 24) {
-        return `${Math.floor(diffInHours)}h atrás`
-      } else {
-        return format(date, "dd 'de' MMM 'às' HH:mm", { locale: ptBR })
-      }
-    } catch (error) {
-      return 'Data inválida'
-    }
   }
 
   return (
@@ -102,15 +105,15 @@ export function CheckinsContent() {
         <Button
           onClick={() => setCheckinModalOpen(true)}
           className="w-full glass hover:bg-white/20 h-16"
-          disabled={!activeGroup || userStats?.today > 0}
+          disabled={!activeGroup || ((userStats?.today ?? 0) > 0)}
         >
           <Camera className="h-6 w-6 mr-3" />
           <div className="text-left">
             <p className="text-base font-medium">
-              {userStats?.today > 0 ? 'Check-in já realizado hoje!' : 'Fazer Check-in'}
+              {(userStats?.today ?? 0) > 0 ? 'Check-in já realizado hoje!' : 'Fazer Check-in'}
             </p>
             <p className="text-sm opacity-75">
-              {userStats?.today > 0 ? 'Volte amanhã para um novo check-in' : 'Registre seu treino de hoje'}
+              {(userStats?.today ?? 0) > 0 ?  'Volte amanhã para um novo check-in' : 'Registre seu treino de hoje'}
             </p>
           </div>
         </Button>

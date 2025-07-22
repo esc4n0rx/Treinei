@@ -18,7 +18,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Calendar, Clock, Loader2, MapPin, X, Building } from "lucide-react"
 import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
-import { format } from "date-fns"
 
 interface CheckinModalProps {
   open: boolean
@@ -37,6 +36,17 @@ const suggestedLocations = [
   "Quadra"
 ]
 
+// Função utilitária para formatar data para input datetime-local
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
 export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const { activeGroup } = useGroups()
   const { createCheckin, isCreating } = useCheckins()
@@ -50,7 +60,7 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
     const now = new Date()
     // Ajustar para timezone de São Paulo (UTC-3)
     const spTime = new Date(now.getTime() - (3 * 60 * 60 * 1000))
-    return format(spTime, "yyyy-MM-dd'T'HH:mm")
+    return formatDateForInput(spTime)
   })
 
   const handlePhotoCapture = (file: File) => {
@@ -100,7 +110,7 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
       setSelectedDate(() => {
         const now = new Date()
         const spTime = new Date(now.getTime() - (3 * 60 * 60 * 1000))
-        return format(spTime, "yyyy-MM-dd'T'HH:mm")
+        return formatDateForInput(spTime)
       })
       onOpenChange(false)
     }
@@ -255,7 +265,7 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="pl-10 glass"
                 disabled={isCreating}
-                max={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
+                max={formatDateForInput(new Date())}
               />
             </div>
             <p className="text-xs text-muted-foreground">

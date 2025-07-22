@@ -10,9 +10,31 @@ import { Button } from "@/components/ui/button"
 import { GroupEmptyState } from "@/components/group-empty-state"
 import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
-import { format, parseISO } from "date-fns"
-import { ptBR } from "date-fns/locale"
 import Link from "next/link"
+
+// Função utilitária para formatar tempo de check-in
+const formatCheckinTime = (dateString: string): string => {
+  try {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+      return diffInMinutes <= 0 ? 'Agora' : `${diffInMinutes}m atrás`
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h atrás`
+    } else {
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${day}/${month} às ${hours}:${minutes}`
+    }
+  } catch (error) {
+    return 'Data inválida'
+  }
+}
 
 export function DashboardContent() {
   const { hasGroups, activeGroup, loading } = useGroups()
@@ -72,25 +94,6 @@ export function DashboardContent() {
       color: "text-orange-500" 
     },
   ]
-
-  const formatCheckinTime = (dateString: string) => {
-    try {
-      const date = parseISO(dateString)
-      const now = new Date()
-      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-      
-      if (diffInHours < 1) {
-        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-        return diffInMinutes <= 0 ? 'Agora' : `${diffInMinutes}m atrás`
-      } else if (diffInHours < 24) {
-        return `${Math.floor(diffInHours)}h atrás`
-      } else {
-        return format(date, "dd/MM 'às' HH:mm")
-      }
-    } catch (error) {
-      return 'Data inválida'
-    }
-  }
 
   // Pegar apenas os 3 check-ins mais recentes para o dashboard
   const recentCheckins = checkins.slice(0, 3)
