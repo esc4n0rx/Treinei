@@ -19,3 +19,27 @@ export interface DatabaseUser {
   data_cadastro: string
   avatar_url: string | null
 }
+
+// Tipos para a tabela de grupos
+export interface DatabaseGroup {
+  id: string
+  nome: string
+  descricao: string | null
+  logo_url: string | null
+  tipo: 'publico' | 'privado'
+  senha_hash: string | null
+  administrador_id: string
+  data_criacao: string
+  status: 'ativo' | 'inativo'
+  max_membros: number | null
+}
+
+// Tipos para a tabela de membros dos grupos
+export interface DatabaseGroupMember {
+  id: string
+  grupo_id: string
+  usuario_id: string
+  papel: 'administrador' | 'membro'
+  data_entrada: string
+  status: 'ativo' | 'inativo'
+}

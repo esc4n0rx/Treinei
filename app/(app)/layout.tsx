@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { BottomNavigation } from "@/components/bottom-navigation"
 import { useAuth } from "@/hooks/useAuth"
+import { GroupProvider } from "@/contexts/GroupContext"
 
 export default function AppLayout({
   children,
@@ -38,9 +39,11 @@ export default function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {children}
-      <BottomNavigation />
-    </div>
+    <GroupProvider>
+      <div className="min-h-screen bg-background pb-20">
+        {children}
+        <BottomNavigation />
+      </div>
+    </GroupProvider>
   )
 }

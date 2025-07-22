@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Calendar, Users, Target, TrendingUp } from "lucide-react"
 import { FloatingActionButton } from "@/components/floating-action-button"
 import { Button } from "@/components/ui/button"
+import { GroupEmptyState } from "@/components/group-empty-state"
+import { useGroups } from "@/hooks/useGroups"
 import Link from "next/link"
 
 const recentCheckins = [
@@ -22,6 +24,25 @@ const stats = [
 ]
 
 export function DashboardContent() {
+  const { hasGroups, activeGroup, loading } = useGroups()
+
+  // Mostrar loading enquanto carrega os grupos
+  if (loading) {
+    return (
+      <div className="p-4 space-y-6">
+        <div className="text-center py-6">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Se não tem grupos, mostrar empty state
+  if (!hasGroups) {
+    return <GroupEmptyState />
+  }
+
   return (
     <div className="p-4 space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
@@ -39,7 +60,9 @@ export function DashboardContent() {
                 <Users className="h-5 w-5 text-primary" />
                 <div>
                   <p className="font-medium">Grupo Ativo</p>
-                  <p className="text-sm text-muted-foreground">Academia Central</p>
+                  <p className="text-sm text-muted-foreground">
+                    {activeGroup?.nome || 'Nenhum grupo selecionado'}
+                  </p>
                 </div>
               </div>
               <Button asChild variant="outline" size="sm" className="glass hover:bg-white/10 bg-transparent">
