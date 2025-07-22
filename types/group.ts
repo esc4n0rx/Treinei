@@ -1,37 +1,41 @@
+// types/group.ts
 export interface Group {
   id: string
   nome: string
-  descricao?: string
-  logo_url?: string
+  descricao: string | null
+  logo_url: string | null
   tipo: 'publico' | 'privado'
-  senha?: string
-  administrador_id: string
   data_criacao: string
+  max_membros: number | null
   status: 'ativo' | 'inativo'
-  max_membros?: number
   administrador?: {
     id: string
     nome: string
-    avatar_url?: string
+    avatar_url: string | null
   }
+  administrador_id?: string
+  userRole?: 'administrador' | 'membro'
+  joinedAt?: string
+  userMembership?: {
+    role: 'administrador' | 'membro'
+    joinedAt: string
+  }
+  membros?: GroupMember[]
   _count?: {
-    membros: number
+    membros?: number
   }
 }
 
 export interface GroupMember {
   id: string
-  grupo_id: string
-  usuario_id: string
   papel: 'administrador' | 'membro'
   data_entrada: string
   status: 'ativo' | 'inativo'
   usuario?: {
     id: string
     nome: string
-    avatar_url?: string
+    avatar_url: string | null
   }
-  grupo?: Group
 }
 
 export interface CreateGroupData {
@@ -48,6 +52,7 @@ export interface JoinGroupData {
   senha?: string
 }
 
+// Response types
 export interface GroupsResponse {
   success: boolean
   groups?: Group[]
@@ -68,6 +73,6 @@ export interface CreateGroupResponse {
 
 export interface JoinGroupResponse {
   success: boolean
-  membership?: GroupMember
+  membership?: any
   error?: string
 }

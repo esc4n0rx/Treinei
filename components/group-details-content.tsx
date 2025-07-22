@@ -1,73 +1,17 @@
+// components/group-details-content.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Trophy, Settings, UserPlus, Crown, Clock } from "lucide-react"
+import { ArrowLeft, Trophy, Settings, UserPlus, Crown, Clock, Loader2 } from "lucide-react"
+import { fetchGroupById } from "@/lib/api/groups"
+import { Group } from "@/types/group"
 import Link from "next/link"
-
-// Mock data - em um app real, isso viria de uma API
-const groupData = {
-  id: "1",
-  name: "Academia Central",
-  description:
-    "Grupo da academia do centro da cidade. Focamos em treinos de força, cardio e funcional. Todos os níveis são bem-vindos!",
-  avatar: "/placeholder.svg?height=80&width=80",
-  members: 15,
-  isOwner: true,
-  isPrivate: false,
-  categories: ["Academia", "Funcional"],
-  createdAt: "Janeiro 2024",
-  weeklyGoal: 5,
-  currentWeekCheckins: 42,
-}
-
-const groupMembers = [
-  {
-    id: "1",
-    name: "João Silva",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "owner",
-    checkins: 7,
-    joinedAt: "Janeiro 2024",
-  },
-  {
-    id: "2",
-    name: "Maria Santos",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "admin",
-    checkins: 6,
-    joinedAt: "Janeiro 2024",
-  },
-  {
-    id: "3",
-    name: "Pedro Costa",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "member",
-    checkins: 5,
-    joinedAt: "Fevereiro 2024",
-  },
-  {
-    id: "4",
-    name: "Ana Lima",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "member",
-    checkins: 4,
-    joinedAt: "Fevereiro 2024",
-  },
-  {
-    id: "5",
-    name: "Carlos Souza",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "member",
-    checkins: 3,
-    joinedAt: "Março 2024",
-  },
-]
 
 const recentActivity = [
   { id: "1", user: "Maria Santos", action: "fez check-in", time: "2h atrás", type: "checkin" },
@@ -78,9 +22,34 @@ const recentActivity = [
 
 export function GroupDetailsContent({ id }: { id: string }) {
   const [activeTab, setActiveTab] = useState("overview")
+  const [group, setGroup] = useState<Group | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadGroup = async () => {
+      try {
+        setLoading(true)
+        const result = await fetchGroupById(id)
+        
+        if (result.success && result.group) {
+          setGroup(result.group)
+        } else {
+          setError(result.error || 'Grupo não encontrado')
+        }
+      } catch (err) {
+        setError('Erro ao carregar grupo')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadGroup()
+  }, [id])
 
   const getRoleIcon = (role: string) => {
     switch (role) {
+      case "administrador":
       case "owner":
         return <Crown className="h-4 w-4 text-yellow-500" />
       case "admin":
@@ -92,10 +61,11 @@ export function GroupDetailsContent({ id }: { id: string }) {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "administrador":
       case "owner":
         return (
           <Badge variant="secondary" className="glass text-xs">
-            Dono
+            Administrador
           </Badge>
         )
       case "admin":
@@ -108,6 +78,33 @@ export function GroupDetailsContent({ id }: { id: string }) {
         return null
     }
   }
+
+  if (loading) {
+    return (
+      <div className="p-4 space-y-6">
+        <div className="text-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando grupo...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !group) {
+    return (
+      <div className="p-4 space-y-6">
+        <div className="text-center py-12">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button asChild variant="outline" className="glass hover:bg-white/10">
+            <Link href="/groups">Voltar aos Grupos</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const isOwner = group.userMembership?.role === 'administrador'
+  const membersCount = group.membros?.length || 0
 
   return (
     <div className="p-4 space-y-6">
@@ -122,10 +119,10 @@ export function GroupDetailsContent({ id }: { id: string }) {
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{groupData.name}</h1>
+          <h1 className="text-2xl font-bold">{group.nome}</h1>
           <p className="text-muted-foreground">Detalhes do grupo</p>
         </div>
-        {groupData.isOwner && (
+        {isOwner && (
           <Button asChild variant="outline" size="sm" className="glass hover:bg-white/10 bg-transparent">
             <Link href={`/groups/${id}/manage`}>
               <Settings className="h-4 w-4 mr-2" />
@@ -140,9 +137,9 @@ export function GroupDetailsContent({ id }: { id: string }) {
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={groupData.avatar || "/placeholder.svg"} />
+                <AvatarImage src={group.logo_url || "/placeholder.svg"} />
                 <AvatarFallback className="text-2xl">
-                  {groupData.name
+                  {group.nome
                     .split(" ")
                     .map((n) => n[0])
                     .join("")}
@@ -151,34 +148,32 @@ export function GroupDetailsContent({ id }: { id: string }) {
 
               <div className="flex-1 space-y-3">
                 <div>
-                  <h2 className="text-xl font-semibold">{groupData.name}</h2>
-                  <p className="text-muted-foreground text-sm">{groupData.description}</p>
+                  <h2 className="text-xl font-semibold">{group.nome}</h2>
+                  <p className="text-muted-foreground text-sm">{group.descricao}</p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {groupData.categories.map((category) => (
-                    <Badge key={category} variant="secondary" className="glass">
-                      {category}
-                    </Badge>
-                  ))}
-                  {groupData.isPrivate && (
+                  <Badge variant={group.tipo === 'publico' ? 'default' : 'outline'} className="glass">
+                    {group.tipo === 'publico' ? 'Público' : 'Privado'}
+                  </Badge>
+                  {group.max_membros && (
                     <Badge variant="outline" className="glass">
-                      Privado
+                      Limite: {group.max_membros}
                     </Badge>
                   )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-primary">{groupData.members}</p>
+                    <p className="text-2xl font-bold text-primary">{membersCount}</p>
                     <p className="text-xs text-muted-foreground">Membros</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-500">{groupData.currentWeekCheckins}</p>
+                    <p className="text-2xl font-bold text-green-500">--</p>
                     <p className="text-xs text-muted-foreground">Check-ins/semana</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-purple-500">{groupData.weeklyGoal}</p>
+                    <p className="text-2xl font-bold text-purple-500">--</p>
                     <p className="text-xs text-muted-foreground">Meta semanal</p>
                   </div>
                 </div>
@@ -208,20 +203,13 @@ export function GroupDetailsContent({ id }: { id: string }) {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Progresso da Meta</span>
-                    <span className="text-sm font-medium">
-                      {groupData.currentWeekCheckins}/{groupData.weeklyGoal * groupData.members}
-                    </span>
+                    <span className="text-sm font-medium">-- / --</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min((groupData.currentWeekCheckins / (groupData.weeklyGoal * groupData.members)) * 100, 100)}%`,
-                      }}
-                    />
+                    <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '0%' }} />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Meta: {groupData.weeklyGoal} check-ins por membro por semana
+                    Funcionalidade em desenvolvimento
                   </p>
                 </div>
               </CardContent>
@@ -234,24 +222,30 @@ export function GroupDetailsContent({ id }: { id: string }) {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Criado em:</span>
-                  <span>{groupData.createdAt}</span>
+                  <span>{new Date(group.data_criacao).toLocaleDateString('pt-BR')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tipo:</span>
-                  <span>{groupData.isPrivate ? "Privado" : "Público"}</span>
+                  <span>{group.tipo === 'publico' ? 'Público' : 'Privado'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Seu papel:</span>
-                  <span>{groupData.isOwner ? "Dono" : "Membro"}</span>
+                  <span>{isOwner ? 'Administrador' : 'Membro'}</span>
                 </div>
+                {group.max_membros && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Limite de membros:</span>
+                    <span>{group.max_membros}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="members" className="space-y-4 mt-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Membros ({groupData.members})</h3>
-              {groupData.isOwner && (
+              <h3 className="text-lg font-semibold">Membros ({membersCount})</h3>
+              {isOwner && (
                 <Button size="sm" className="glass hover:bg-white/20">
                   <UserPlus className="h-4 w-4 mr-2" />
                   Convidar
@@ -260,7 +254,7 @@ export function GroupDetailsContent({ id }: { id: string }) {
             </div>
 
             <div className="space-y-3">
-              {groupMembers.map((member, index) => (
+              {group.membros?.map((member, index) => (
                 <motion.div
                   key={member.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -271,10 +265,10 @@ export function GroupDetailsContent({ id }: { id: string }) {
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-12 w-12">
-                          <AvatarImage src={member.avatar || "/placeholder.svg"} />
+                          <AvatarImage src={member.usuario?.avatar_url || "/placeholder.svg"} />
                           <AvatarFallback>
-                            {member.name
-                              .split(" ")
+                            {member.usuario?.nome
+                              ?.split(" ")
                               .map((n) => n[0])
                               .join("")}
                           </AvatarFallback>
@@ -282,13 +276,13 @@ export function GroupDetailsContent({ id }: { id: string }) {
 
                         <div className="flex-1">
                           <div className="flex items-center space-x-2">
-                            <p className="font-medium">{member.name}</p>
-                            {getRoleIcon(member.role)}
-                            {getRoleBadge(member.role)}
+                            <p className="font-medium">{member.usuario?.nome}</p>
+                            {getRoleIcon(member.papel)}
+                            {getRoleBadge(member.papel)}
                           </div>
                           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                            <span>{member.checkins} check-ins esta semana</span>
-                            <span>Desde {member.joinedAt}</span>
+                            <span>-- check-ins esta semana</span>
+                            <span>Desde {new Date(member.data_entrada).toLocaleDateString('pt-BR')}</span>
                           </div>
                         </div>
                       </div>

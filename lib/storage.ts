@@ -1,3 +1,4 @@
+// lib/storage.ts
 import { supabase } from './supabase'
 
 export interface UploadImageResponse {
@@ -11,12 +12,29 @@ export interface UploadImageResponse {
  */
 export async function uploadGroupLogo(file: File, groupId: string): Promise<UploadImageResponse> {
   try {
-    const fileExt = file.name.split('.').pop()
+    // Validar arquivo
+    if (!file) {
+      return { success: false, error: 'Nenhum arquivo fornecido' }
+    }
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      return { success: false, error: 'Apenas imagens são permitidas' }
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: 'Imagem muito grande. Máximo 5MB' }
+    }
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const fileName = `group-${groupId}-${Date.now()}.${fileExt}`
     const filePath = `grupos/${fileName}`
 
+    console.log('Iniciando upload:', { fileName, fileSize: file.size, fileType: file.type })
+
     // Upload do arquivo
-    const { error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('treinei-images')
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -27,18 +45,29 @@ export async function uploadGroupLogo(file: File, groupId: string): Promise<Uplo
       console.error('Erro no upload:', uploadError)
       return {
         success: false,
-        error: 'Erro ao fazer upload da imagem'
+        error: `Erro ao fazer upload: ${uploadError.message}`
       }
     }
 
+    console.log('Upload realizado com sucesso:', uploadData)
+
     // Obter URL pública
-    const { data } = supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from('treinei-images')
       .getPublicUrl(filePath)
 
+    if (!publicUrlData?.publicUrl) {
+      return {
+        success: false,
+        error: 'Erro ao obter URL pública da imagem'
+      }
+    }
+
+    console.log('URL pública gerada:', publicUrlData.publicUrl)
+
     return {
       success: true,
-      url: data.publicUrl
+      url: publicUrlData.publicUrl
     }
   } catch (error) {
     console.error('Erro no upload de imagem:', error)
@@ -64,7 +93,12 @@ export async function deleteGroupLogo(logoUrl: string): Promise<boolean> {
       .from('treinei-images')
       .remove([filePath])
 
-    return !error
+    if (error) {
+      console.error('Erro ao deletar imagem:', error)
+      return false
+    }
+
+    return true
   } catch (error) {
     console.error('Erro ao deletar imagem:', error)
     return false
