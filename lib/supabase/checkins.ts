@@ -1,6 +1,6 @@
 import { supabase } from '../supabase'
 import { Checkin, CreateCheckinData } from '@/types/checkin'
-import { uploadCheckinPhoto } from '../storage'
+import { uploadCheckinPhoto, diagnoseStorageIssues } from '../storage'
 
 /**
  * Busca check-ins de um grupo específico
@@ -46,14 +46,25 @@ export async function getGroupCheckins(groupId: string, limit = 50) {
 }
 
 /**
- * Cria um novo check-in
+ * Cria um novo check-in com debugging aprimorado
  */
 export async function createCheckin(data: CreateCheckinData, userId: string) {
   try {
+    console.log('=== INÍCIO CRIAÇÃO CHECKIN ===')
+    console.log('Dados recebidos:', { 
+      grupo_id: data.grupo_id, 
+      userId,
+      temFoto: !!data.foto,
+      fotoSize: data.foto?.size,
+      observacao: data.observacao,
+      local: data.local
+    })
+
     const { grupo_id, foto, observacao, local, data_checkin } = data
 
     // Verificar se o usuário é membro do grupo
-    const { data: membership } = await supabase
+    console.log('Verificando membership...')
+    const { data: membership, error: membershipError } = await supabase
       .from('treinei_grupos_membros')
       .select('id')
       .eq('grupo_id', grupo_id)
@@ -61,13 +72,16 @@ export async function createCheckin(data: CreateCheckinData, userId: string) {
       .eq('status', 'ativo')
       .single()
 
-    if (!membership) {
+    if (membershipError || !membership) {
+      console.error('Erro de membership:', membershipError)
       return { success: false, error: 'Você não é membro deste grupo' }
     }
+    console.log('Membership verificado com sucesso')
 
     // Verificar se já fez check-in hoje neste grupo
+    console.log('Verificando check-in duplicado...')
     const today = new Date().toISOString().split('T')[0]
-    const { data: existingCheckin } = await supabase
+    const { data: existingCheckin, error: existingError } = await supabase
       .from('treinei_checkins')
       .select('id')
       .eq('usuario_id', userId)
@@ -77,17 +91,28 @@ export async function createCheckin(data: CreateCheckinData, userId: string) {
       .single()
 
     if (existingCheckin) {
+      console.log('Check-in já existe para hoje')
       return { success: false, error: 'Você já fez check-in hoje neste grupo' }
+    }
+    console.log('Nenhum check-in duplicado encontrado')
+
+    // Executar diagnóstico se necessário
+    if (process.env.NODE_ENV === 'development') {
+      await diagnoseStorageIssues()
     }
 
     // Upload da foto
+    console.log('Iniciando upload da foto...')
     const uploadResult = await uploadCheckinPhoto(foto, userId, grupo_id)
     
     if (!uploadResult.success || !uploadResult.url) {
+      console.error('Falha no upload:', uploadResult.error)
       return { success: false, error: uploadResult.error || 'Erro no upload da foto' }
     }
+    console.log('Upload da foto realizado com sucesso:', uploadResult.url)
 
-    // Criar check-in
+    // Criar check-in no banco
+    console.log('Criando registro no banco...')
     const { data: checkinData, error: checkinError } = await supabase
       .from('treinei_checkins')
       .insert({
@@ -121,13 +146,17 @@ export async function createCheckin(data: CreateCheckinData, userId: string) {
       .single()
 
     if (checkinError) {
-      console.error('Erro ao criar check-in:', checkinError)
+      console.error('Erro ao criar check-in no banco:', checkinError)
       return { success: false, error: 'Erro ao criar check-in' }
     }
 
+    console.log('Check-in criado com sucesso no banco:', checkinData.id)
+    console.log('=== FIM CRIAÇÃO CHECKIN - SUCESSO ===')
+
     return { success: true, checkin: checkinData }
   } catch (error) {
-    console.error('Erro ao criar check-in:', error)
+    console.error('Erro geral ao criar check-in:', error)
+    console.log('=== FIM CRIAÇÃO CHECKIN - ERRO ===')
     return { success: false, error: 'Erro interno' }
   }
 }
