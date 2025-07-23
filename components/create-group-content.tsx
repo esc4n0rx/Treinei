@@ -1,9 +1,8 @@
-// components/create-group-content.tsx
 "use client"
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,6 +30,42 @@ const groupCategories = [
 ]
 
 export function CreateGroupContent() {
+  const [mounted, setMounted] = useState(false)
+  const [activeTab, setActiveTab] = useState("info")
+  const [formData, setFormData] = useState({
+    nome: "",
+    descricao: "",
+    tipo: "publico" as "publico" | "privado",
+    senha: "",
+    max_membros: "",
+  })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  
+  const router = useRouter()
+
+  // Verificar se o componente foi montado no cliente
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Não renderizar nada até que o componente seja montado no cliente
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <CreateGroupContentInner />
+}
+
+function CreateGroupContentInner() {
   const [activeTab, setActiveTab] = useState("info")
   const [formData, setFormData] = useState({
     nome: "",
@@ -48,19 +83,33 @@ export function CreateGroupContent() {
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+      prev.includes(categoryId) ?
+        prev.filter((id) => id !== categoryId) : [...prev, categoryId],
     )
   }
 
   const handleFileChange = (file: File | null) => {
-    setSelectedFile(file)
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    } else {
-      setPreviewUrl(null)
+  if (file) {
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione apenas arquivos de imagem')
+      return
     }
+    
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB')
+      return
+    }
+    
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+  } else {
+    setPreviewUrl(null)
   }
+  
+  setSelectedFile(file)
+}
 
   const validateForm = (): boolean => {
     if (!formData.nome.trim()) {
@@ -145,193 +194,222 @@ export function CreateGroupContent() {
             disabled={isCreating}
           >
             {isCreating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Criando...
+              </>
             ) : (
-              "Criar"
+              'Criar Grupo'
             )}
           </Button>
         </motion.div>
       </div>
 
-      {/* Form */}
-      <div className="p-4 pb-20">
+      {/* Content */}
+      <div className="p-4">
         <form id="create-group-form" onSubmit={handleSubmit}>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl mx-auto"
+          >
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 glass mb-6">
                 <TabsTrigger value="info" className="flex items-center space-x-2">
                   {getTabIcon("info")}
-                  <span className="hidden sm:inline">Informações</span>
-                  <span className="sm:hidden">Info</span>
+                  <span>Informações</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="flex items-center space-x-2">
                   {getTabIcon("settings")}
-                  <span className="hidden sm:inline">Configurações</span>
-                  <span className="sm:hidden">Config</span>
+                  <span>Configurações</span>
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="info" className="space-y-4">
-                {/* Foto e Nome */}
+              <TabsContent value="info" className="space-y-6">
                 <Card className="glass-card">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <FileInput
-                        value={selectedFile}
-                        onChange={handleFileChange}
-                        preview={previewUrl}
-                        fallback={formData.nome
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("") || "GR"}
-                        disabled={isCreating}
+                  <CardHeader>
+                    <CardTitle>Informações Básicas</CardTitle>
+                    <CardDescription>
+                      Defina o nome e descrição do seu grupo
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome">Nome do Grupo *</Label>
+                      <Input
+                        id="nome"
+                        placeholder="Ex: Academia Fitness"
+                        value={formData.nome}
+                        onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                        className="glass"
+                        required
                       />
-                      
-                      <div className="flex-1 space-y-3">
-                        <div>
-                          <Label htmlFor="name" className="text-sm">Nome do Grupo *</Label>
-                          <Input
-                            id="name"
-                            value={formData.nome}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
-                            placeholder="Ex: Academia Central"
-                            className="glass mt-1"
-                            required
-                            disabled={isCreating}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="descricao">Descrição</Label>
+                      <Textarea
+                        id="descricao"
+                        placeholder="Descreva o objetivo do seu grupo..."
+                        value={formData.descricao}
+                        onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                        className="glass min-h-[100px]"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Logo do Grupo (Opcional)</Label>
+                       <FileInput
+                          value={selectedFile}
+                          onChange={handleFileChange}
+                          preview={previewUrl}
+                          fallback="GR"
+                        />
+                      {previewUrl && (
+                        <div className="flex justify-center">
+                          <img
+                            src={previewUrl}
+                            alt="Preview"
+                            className="h-20 w-20 rounded-full object-cover border-2 border-primary/20"
                           />
                         </div>
-                      </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Descrição */}
                 <Card className="glass-card">
-                  <CardContent className="p-4 space-y-3">
-                    <Label htmlFor="description" className="text-sm">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.descricao}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, descricao: e.target.value }))}
-                      placeholder="Descreva o objetivo do seu grupo..."
-                      className="glass min-h-[80px] resize-none"
-                      disabled={isCreating}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Categorias */}
-                <Card className="glass-card">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Categorias</CardTitle>
-                    <CardDescription className="text-xs">Selecione as atividades (opcional)</CardDescription>
+                  <CardHeader>
+                    <CardTitle>Categorias</CardTitle>
+                    <CardDescription>
+                      Selecione as categorias que melhor descrevem seu grupo
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="grid grid-cols-2 gap-2">
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-3">
                       {groupCategories.map((category) => (
-                        <motion.div
+                        <motion.button
                           key={category.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => !isCreating && handleCategoryToggle(category.id)}
-                          className={`p-2 rounded-md border cursor-pointer transition-all duration-300 ${
-                            selectedCategories.includes(category.id)
-                              ? "bg-primary/20 border-primary/50"
-                              : "glass hover:bg-white/10"
-                          } ${isCreating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          type="button"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleCategoryToggle(category.id)}
+                          className={`
+                            p-3 rounded-lg border glass text-left transition-all
+                            ${selectedCategories.includes(category.id)
+                              ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                              : 'border-border hover:border-primary/50'
+                            }
+                          `}
                         >
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-2 h-2 rounded-full ${category.color}`} />
-                            <span className="text-xs font-medium">{category.label}</span>
+                          <div className="flex items-center space-x-3">
+                            <div className={`h-3 w-3 rounded-full ${category.color}`} />
+                            <span className="font-medium">{category.label}</span>
                           </div>
-                        </motion.div>
+                        </motion.button>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="settings" className="space-y-4">
-                {/* Privacidade */}
+              <TabsContent value="settings" className="space-y-6">
                 <Card className="glass-card">
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        {formData.tipo === 'privado' ? <Lock className="h-5 w-5" /> : <Globe className="h-5 w-5" />}
-                        <div>
-                          <Label htmlFor="privacy" className="text-sm">Grupo Privado</Label>
-                          <p className="text-xs text-muted-foreground">
-                            {formData.tipo === 'privado' ? "Requer senha para entrar" : "Qualquer um pode entrar"}
-                          </p>
+                  <CardHeader>
+                    <CardTitle>Privacidade</CardTitle>
+                    <CardDescription>
+                      Defina quem pode entrar no seu grupo
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div 
+                        className={`
+                          p-4 rounded-lg border cursor-pointer transition-all
+                          ${formData.tipo === 'publico' 
+                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
+                            : 'border-border hover:border-primary/50'
+                          }
+                        `}
+                        onClick={() => setFormData(prev => ({ ...prev, tipo: 'publico', senha: '' }))}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Globe className="h-5 w-5 text-green-500" />
+                          <div>
+                            <h4 className="font-medium">Público</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Qualquer pessoa pode encontrar e entrar
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <Switch
-                        id="privacy"
-                        checked={formData.tipo === 'privado'}
-                        onCheckedChange={(checked) => {
-                          setFormData((prev) => ({ 
-                            ...prev, 
-                            tipo: checked ? 'privado' : 'publico',
-                            senha: checked ? prev.senha : ""
-                          }))
-                        }}
-                        disabled={isCreating}
-                      />
+
+                      <div 
+                        className={`
+                          p-4 rounded-lg border cursor-pointer transition-all
+                          ${formData.tipo === 'privado' 
+                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
+                            : 'border-border hover:border-primary/50'
+                          }
+                        `}
+                        onClick={() => setFormData(prev => ({ ...prev, tipo: 'privado' }))}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Lock className="h-5 w-5 text-orange-500" />
+                          <div>
+                            <h4 className="font-medium">Privado</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Necessário senha para entrar
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {formData.tipo === 'privado' && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
+                        animate={{ opacity: 1, height: 'auto' }}
                         className="space-y-2"
                       >
-                        <Label htmlFor="password" className="text-sm">Senha do Grupo *</Label>
+                        <Label htmlFor="senha">Senha do Grupo *</Label>
                         <Input
-                          id="password"
+                          id="senha"
                           type="password"
+                          placeholder="Digite uma senha segura"
                           value={formData.senha}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, senha: e.target.value }))}
-                          placeholder="Digite uma senha"
+                          onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
                           className="glass"
                           required={formData.tipo === 'privado'}
-                          disabled={isCreating}
                         />
                       </motion.div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Limite de Membros */}
                 <Card className="glass-card">
-                  <CardContent className="p-4 space-y-3">
-                    <Label htmlFor="maxMembers" className="text-sm">Limite de Membros</Label>
-                    <Input
-                      id="maxMembers"
-                      type="number"
-                      value={formData.max_membros}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, max_membros: e.target.value }))}
-                      placeholder="Ex: 50 (opcional)"
-                      className="glass"
-                      min="2"
-                      max="1000"
-                      disabled={isCreating}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Deixe em branco para sem limite
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Info sobre criação */}
-                <Card className="glass-card border-primary/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <Users className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">Você será o administrador</p>
-                        <p className="text-xs text-muted-foreground">
-                          Como criador, você poderá gerenciar membros, alterar configurações e excluir o grupo.
-                        </p>
-                      </div>
+                  <CardHeader>
+                    <CardTitle>Limites</CardTitle>
+                    <CardDescription>
+                      Configure os limites do seu grupo
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="max_membros">Máximo de Membros (Opcional)</Label>
+                      <Input
+                        id="max_membros"
+                        type="number"
+                        min="2"
+                        max="1000"
+                        placeholder="Ex: 50"
+                        value={formData.max_membros}
+                        onChange={(e) => setFormData(prev => ({ ...prev, max_membros: e.target.value }))}
+                        className="glass"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Deixe em branco para não ter limite. Mínimo: 2, Máximo: 1000
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
