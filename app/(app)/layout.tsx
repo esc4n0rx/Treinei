@@ -8,6 +8,7 @@ import { BottomNavigation } from "@/components/bottom-navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { GroupProvider } from "@/contexts/GroupContext"
 import { CheckinProvider } from "@/contexts/CheckinContext"
+import { PushNotificationManager } from "@/components/PushNotificationManager"
 
 export default function AppLayout({
   children,
@@ -23,7 +24,6 @@ export default function AppLayout({
     }
   }, [isAuthenticated, loading, router])
 
-  // Mostrar loading enquanto verifica autenticação
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -35,7 +35,6 @@ export default function AppLayout({
     )
   }
 
-  // Se não estiver autenticado, não renderizar nada (redirecionamento já foi feito)
   if (!isAuthenticated) {
     return null
   }
@@ -43,6 +42,7 @@ export default function AppLayout({
   return (
     <GroupProvider>
       <CheckinProvider>
+        <PushNotificationManager />
         <div className="min-h-screen bg-background pb-20">
           {children}
           <BottomNavigation />

@@ -11,6 +11,7 @@ const STATIC_RESOURCES = [
   '/ranking',
   '/profile',
   '/offline.html',
+  '/notification.png' // Adicionar o ícone ao cache
 ];
 
 // Install event - cache resources
@@ -25,7 +26,6 @@ self.addEventListener('install', (event) => {
       })
       .then(() => {
         console.log('Service Worker installed successfully');
-        // Force activation of new service worker
         return self.skipWaiting();
       })
   );
@@ -49,7 +49,6 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => {
         console.log('Service Worker activated');
-        // Take control of all clients immediately
         return self.clients.claim();
       })
   );
@@ -60,66 +59,29 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
-
-  // Skip external requests
-  if (url.origin !== location.origin) {
-    return;
-  }
-
-  // Skip API requests
-  if (url.pathname.startsWith('/api/')) {
+  if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) {
     return;
   }
 
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {
-        if (cachedResponse) {
-          // Return cached version and update in background
-          fetch(request)
-            .then((response) => {
-              if (response.ok) {
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME)
-                  .then((cache) => {
-                    cache.put(request, responseClone);
-                  });
-              }
-            })
-            .catch(() => {
-              // Network error, cached version is being served
+        const fetchPromise = fetch(request).then((networkResponse) => {
+          if (networkResponse.ok) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
             });
-          
-          return cachedResponse;
+          }
+          return networkResponse;
+        });
+
+        return cachedResponse || fetchPromise;
+      })
+      .catch(() => {
+        if (request.mode === 'navigate') {
+          return caches.match('/offline.html');
         }
-
-        // Not in cache, fetch from network
-        return fetch(request)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error('Network response was not ok');
-            }
-
-            const responseClone = response.clone();
-            
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(request, responseClone);
-              });
-
-            return response;
-          })
-          .catch(() => {
-            // Network failed, try to serve offline page for navigation requests
-            if (request.mode === 'navigate') {
-              return caches.match('/offline.html');
-            }
-            throw new Error('Network error and no cached version available');
-          });
       })
   );
 });
@@ -132,28 +94,61 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Push notifications (for future use)
+// *** NOVO: Push event listener ***
 self.addEventListener('push', (event) => {
+  console.log('Push recebido:', event);
+
+  let payload = {
+    title: 'Nova Notificação',
+    body: 'Você tem uma nova mensagem.',
+    icon: '/notification.png',
+    url: '/'
+  };
+
   if (event.data) {
-    const data = event.data.json();
-    
-    event.waitUntil(
-      self.registration.showNotification(data.title, {
-        body: data.body,
-        icon: data.icon || '/logo.png',
-        badge: '/logo.png',
-        tag: data.tag || 'treinei-notification',
-        data: data.data || {},
-      })
-    );
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      console.error('Erro ao parsear payload do push:', e);
+    }
   }
+
+  const options = {
+    body: payload.body,
+    icon: payload.icon,
+    badge: '/notification.png', // Ícone para a barra de status do Android
+    vibrate: [100, 50, 100], // Vibração [vibra, pausa, vibra]
+    data: {
+      url: payload.url,
+    },
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, options)
+  );
 });
 
-// Handle notification clicks
+// *** NOVO: Notification click event listener ***
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+  const urlToOpen = event.notification.data.url || '/';
+
   event.waitUntil(
-    self.clients.openWindow(event.notification.data.url || '/')
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+          if (clientList[i].focused) {
+            client = clientList[i];
+          }
+        }
+        client.navigate(urlToOpen);
+        return client.focus();
+      }
+      return clients.openWindow(urlToOpen);
+    })
   );
 });

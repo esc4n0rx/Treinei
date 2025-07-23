@@ -80,6 +80,38 @@ export async function getGroupCheckins(groupId: string, limit = 50): Promise<Get
   }
 }
 
+
+/**
+ * Envia notificações de check-in para membros do grupo.
+ */
+async function sendCheckinNotifications(checkin: Checkin) {
+  try {
+    const { data: members, error } = await supabase
+      .from('treinei_grupos_membros')
+      .select('usuario_id')
+      .eq('grupo_id', checkin.grupo_id)
+      .neq('usuario_id', checkin.usuario_id);
+
+    if (error || !members || members.length === 0) {
+      return;
+    }
+
+    const userIds = members.map(m => m.usuario_id);
+    const notificationPayload = {
+      title: `${checkin.usuario?.nome} fez um check-in!`,
+      body: `Veja o treino de hoje no grupo ${checkin.grupo?.nome}.`,
+      url: `/groups/${checkin.grupo_id}`
+    };
+
+    await supabase.functions.invoke('send-notification', {
+      body: { userIds, notification: notificationPayload }
+    });
+
+  } catch (err) {
+    console.error("Erro ao enviar notificação de check-in:", err);
+  }
+}
+
 /**
  * Cria um novo check-in com debugging aprimorado
  */
@@ -136,6 +168,8 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
       _count: { curtidas: 0, comentarios: 0 },
       userLiked: false
     };
+
+    sendCheckinNotifications(checkinWithCounts);
 
     return { success: true, checkin: checkinWithCounts };
   } catch (error) {
