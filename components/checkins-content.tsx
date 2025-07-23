@@ -1,3 +1,4 @@
+// components/checkins-content.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -15,6 +16,7 @@ import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import { CheckinComment } from "@/types/checkin"
 import { toast } from "sonner"
+import Link from "next/link" // Adicionado import
 
 const formatCheckinDate = (dateString: string): string => {
   try {
@@ -100,7 +102,7 @@ export function CheckinsContent() {
       const result = await response.json()
       
       if (result.success && result.comments) {
-        setCheckinComments(prev => ({
+        setCheckinComments((prev: any) => ({
           ...prev,
           [checkinId]: result.comments
         }))
@@ -129,7 +131,7 @@ export function CheckinsContent() {
       
       if (result.success && result.comment) {
         // Atualizar comentários localmente
-        setCheckinComments(prev => ({
+        setCheckinComments((prev: { [x: string]: any }) => ({
           ...prev,
           [checkinId]: [...(prev[checkinId] || []), result.comment]
         }))
@@ -235,7 +237,7 @@ export function CheckinsContent() {
           </motion.div>
         )}
 
-        {checkins.map((checkin, index) => (
+        {checkins.map((checkin:any, index:any) => (
           <motion.div
             key={checkin.id}
             initial={{ opacity: 0, y: 20 }}
@@ -246,19 +248,23 @@ export function CheckinsContent() {
               {/* Header compacto */}
               <div className="p-3 pb-2">
                 <div className="flex items-center space-x-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={checkin.usuario?.avatar_url || "/placeholder.svg"} />
-                    <AvatarFallback>
-                      {checkin.usuario?.nome
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("") || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Link href={`/users/${checkin.usuario?.id}`}>
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={checkin.usuario?.avatar_url || "/placeholder.svg"} />
+                      <AvatarFallback>
+                        {checkin.usuario?.nome
+                          ?.split(" ")
+                          .map((n:any) => n[0])
+                          .join("") || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <p className="font-medium text-sm truncate">{checkin.usuario?.nome || 'Usuário'}</p>
+                      <Link href={`/users/${checkin.usuario?.id}`} className="font-medium text-sm truncate hover:underline">
+                        {checkin.usuario?.nome || 'Usuário'}
+                      </Link>
                       <Badge variant="secondary" className="glass text-xs px-1.5 py-0.5">
                         Check-in
                       </Badge>

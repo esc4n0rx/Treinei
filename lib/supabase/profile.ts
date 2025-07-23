@@ -1,3 +1,4 @@
+// lib/supabase/profile.ts
 import { supabase } from '../supabase'
 import { UserProfile, UserStats } from '@/types/profile'
 
@@ -142,11 +143,11 @@ async function calculateBestStreak(userId: string): Promise<number> {
 
   let maxStreak = 1
   let currentStreak = 1
-    // AJUSTE: Adicionada a asserção de tipo para evitar erro de 'any' implícito
+    // AJUSTE: A tipagem já foi corrigida no arquivo que você me enviou, mantendo a consistência.
   let lastDate = new Date((checkins[0] as { data_checkin: string }).data_checkin)
 
   for (let i = 1; i < checkins.length; i++) {
-        // AJUSTE: Adicionada a asserção de tipo para evitar erro de 'any' implícito
+        // AJUSTE: A tipagem já foi corrigida no arquivo que você me enviou, mantendo a consistência.
    const currentDate = new Date((checkins[i] as { data_checkin: string }).data_checkin)
    const dayDiff = Math.floor((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
    

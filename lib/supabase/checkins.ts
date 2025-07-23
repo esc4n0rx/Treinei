@@ -3,8 +3,6 @@ import { Checkin, CreateCheckinData, CheckinComment } from '@/types/checkin';
 import { uploadToCloudinary } from '../cloudinary';
 import { PostgrestSingleResponse } from '@supabase/supabase-js';
 
-// --- TYPE DEFINITIONS ---
-// Tipos para os dados brutos que vêm do Supabase
 type SupabaseCount = { count: number }[];
 
 type CheckinFromSupabase = Omit<Checkin, '_count' | 'usuario' | 'grupo'> & {

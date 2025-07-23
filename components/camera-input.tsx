@@ -1,3 +1,4 @@
+// components/camera-input.tsx
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
@@ -31,7 +32,6 @@ export function CameraInput({
 
   const startCamera = useCallback(async (mode: 'environment' | 'user') => {
     try {
-      // Parar qualquer stream existente
       if (stream) {
         stream.getTracks().forEach((track: MediaStreamTrack) => track.stop())
       }
@@ -39,8 +39,8 @@ export function CameraInput({
       const constraints = {
         video: { 
           facingMode: { ideal: mode },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          // Prioriza a proporção 4:3, mais comum em câmeras de celular
+          aspectRatio: { ideal: 4 / 3 }
         }
       }
 
@@ -56,14 +56,12 @@ export function CameraInput({
     }
   }, [stream])
 
-  // useEffect para gerenciar o stream de vídeo
   useEffect(() => {
     if (stream && videoRef.current && isOpen) {
       const video = videoRef.current
       
       const handleLoadedMetadata = () => {
         setIsVideoReady(true)
-        // Garantir que o vídeo seja reproduzido
         video.play().catch((error: unknown) => {
           console.error('Erro ao reproduzir vídeo:', error)
         })
@@ -84,7 +82,6 @@ export function CameraInput({
     }
   }, [stream, isOpen])
 
-  // useEffect para cleanup quando o componente desmonta
   useEffect(() => {
     return () => {
       if (stream) {
@@ -94,7 +91,6 @@ export function CameraInput({
   }, [stream])
 
   const handleCameraOpen = async () => {
-    // Tenta primeiro a câmera traseira, se falhar, tenta a frontal.
     const success = await startCamera('environment')
     if (!success) {
       const fallbackSuccess = await startCamera('user')
@@ -125,7 +121,6 @@ export function CameraInput({
     const video = videoRef.current
     const canvas = canvasRef.current
     const context = canvas.getContext('2d')
-
     if (!context) return
 
     canvas.width = video.videoWidth
@@ -138,12 +133,9 @@ export function CameraInput({
   }
 
   const confirmPhoto = () => {
-    if (!capturedPhoto) return
+    if (!capturedPhoto || !canvasRef.current) return
 
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    canvas.toBlob((blob: Blob | null) => {
+    canvasRef.current.toBlob((blob: Blob | null) => {
       if (blob) {
         const file = new File([blob], `checkin-${Date.now()}.jpg`, {
           type: 'image/jpeg'
@@ -173,96 +165,95 @@ export function CameraInput({
 
   if (isOpen) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col">
-        <div className="flex-1 relative">
-          {!capturedPhoto ? (
-            <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-                style={{ 
-                  opacity: isVideoReady ? 1 : 0,
-                  transition: 'opacity 0.3s ease-in-out'
-                }}
-              />
-              <canvas
-                ref={canvasRef}
-                className="hidden"
-              />
-              {!isVideoReady && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black">
-                  <div className="text-white text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                    <p>Carregando câmera...</p>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <img
-              src={capturedPhoto}
-              alt="Foto capturada"
-              className="w-full h-full object-contain"
-            />
-          )}
-        </div>
-
-        <div className="flex items-center justify-between p-4 bg-black/50 backdrop-blur-md">
+      <div className="fixed inset-0 bg-black z-50 flex flex-col h-full">
+        {/* Top bar */}
+        <div className="flex justify-end p-2">
           <Button
             onClick={stopCamera}
             variant="ghost"
-            size="lg"
-            className="text-white hover:bg-white/20 rounded-full p-3"
+            size="icon"
+            className="text-white hover:bg-white/20 rounded-full"
           >
             <X className="h-6 w-6" />
           </Button>
+        </div>
 
-          <div className="flex items-center space-x-4">
+        {/* Preview Area */}
+        <div className="flex-1 flex items-center justify-center relative min-h-0">
+          <div className="w-full aspect-[3/4] max-h-full relative">
             {!capturedPhoto ? (
               <>
-                <Button
-                  onClick={switchCamera}
-                  variant="ghost"
-                  size="lg"
-                  className="text-white hover:bg-white/20 rounded-full p-3"
-                  disabled={!isVideoReady}
-                >
-                  <RotateCcw className="h-6 w-6" />
-                </Button>
-                <Button
-                  onClick={capturePhoto}
-                  size="lg"
-                  className="rounded-full w-16 h-16 bg-white hover:bg-white/90"
-                  disabled={!isVideoReady}
-                >
-                  <Camera className="h-8 w-8 text-black" />
-                </Button>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-contain"
+                  style={{ opacity: isVideoReady ? 1 : 0, transition: 'opacity 0.3s ease-in-out' }}
+                />
+                <canvas ref={canvasRef} className="hidden" />
+                {!isVideoReady && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black">
+                    <div className="text-white text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                      <p>Carregando câmera...</p>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
-              <>
-                <Button
-                  onClick={retakePhoto}
-                  variant="ghost"
-                  size="lg"
-                  className="text-white hover:bg-white/20 rounded-full p-3"
-                >
-                  <RotateCcw className="h-6 w-6" />
-                </Button>
-                <Button
-                  onClick={confirmPhoto}
-                  size="lg"
-                  className="rounded-full w-16 h-16 bg-green-500 hover:bg-green-600"
-                >
-                  <Check className="h-8 w-8 text-white" />
-                </Button>
-              </>
+              <img
+                src={capturedPhoto}
+                alt="Foto capturada"
+                className="w-full h-full object-contain"
+              />
             )}
           </div>
+        </div>
 
-          <div className="w-12" /> {/* Spacer */}
+        {/* Bottom Controls */}
+        <div className="flex items-center justify-around p-4 h-28">
+          {!capturedPhoto ? (
+            <>
+              <Button
+                onClick={switchCamera}
+                variant="ghost"
+                size="lg"
+                className="text-white hover:bg-white/20 rounded-full w-16 h-16"
+                disabled={!isVideoReady}
+              >
+                <RotateCcw className="h-6 w-6" />
+              </Button>
+              <Button
+                onClick={capturePhoto}
+                size="lg"
+                className="rounded-full w-20 h-20 bg-white hover:bg-white/90 ring-4 ring-white/30"
+                disabled={!isVideoReady}
+              >
+                <Camera className="h-8 w-8 text-black" />
+              </Button>
+              <div className="w-16" /> {/* Spacer */}
+            </>
+          ) : (
+            <>
+              <Button
+                onClick={retakePhoto}
+                variant="ghost"
+                size="lg"
+                className="text-white hover:bg-white/20 rounded-full w-16 h-16"
+              >
+                <RotateCcw className="h-6 w-6" />
+              </Button>
+              <Button
+                onClick={confirmPhoto}
+                size="lg"
+                className="rounded-full w-20 h-20 bg-green-500 hover:bg-green-600 ring-4 ring-green-500/30"
+              >
+                <Check className="h-8 w-8 text-white" />
+              </Button>
+              <div className="w-16" /> {/* Spacer */}
+            </>
+          )}
         </div>
       </div>
     )
