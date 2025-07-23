@@ -1,3 +1,5 @@
+"use client"
+
 import { GroupDetailsContent } from "@/components/group-details-content"
 
 interface GroupDetailsPageProps {

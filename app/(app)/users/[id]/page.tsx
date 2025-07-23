@@ -1,3 +1,5 @@
+"use client"
+
 import { UserProfileContent } from "@/components/user-profile-content";
 
 interface UserProfilePageProps {

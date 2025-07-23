@@ -1,3 +1,5 @@
+"use client"
+
 import { ProfileContent } from "@/components/profile-content"
 
 export default function ProfilePage() {

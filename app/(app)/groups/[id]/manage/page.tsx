@@ -1,3 +1,5 @@
+"use client"
+
 import { ManageGroupContent } from "@/components/manage-group-content"
 
 interface ManageGroupPageProps {
