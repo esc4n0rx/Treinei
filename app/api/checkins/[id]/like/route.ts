@@ -19,7 +19,7 @@ export async function POST(
 
     const decoded = verifyToken(token)
     const userId = decoded.userId
-    const checkinId = params.id
+    const checkinId = (await params).id
 
     if (!checkinId) {
       return NextResponse.json(

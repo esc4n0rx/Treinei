@@ -133,17 +133,22 @@ export function CameraInput({
   }
 
   const confirmPhoto = () => {
-    if (!capturedPhoto || !canvasRef.current) return
+    if (!capturedPhoto) return
 
-    canvasRef.current.toBlob((blob: Blob | null) => {
-      if (blob) {
+    // Converter dataURL para blob usando fetch
+    fetch(capturedPhoto)
+      .then(res => res.blob())
+      .then(blob => {
         const file = new File([blob], `checkin-${Date.now()}.jpg`, {
           type: 'image/jpeg'
         })
         onPhotoCapture(file)
         stopCamera()
-      }
-    }, 'image/jpeg', 0.9)
+      })
+      .catch(error => {
+        console.error('Erro ao converter foto:', error)
+        toast.error('Erro ao processar a foto. Tente novamente.')
+      })
   }
 
   const retakePhoto = () => {

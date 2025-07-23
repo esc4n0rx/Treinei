@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const decoded = verifyToken(token)
-    const checkinId = params.id
+    const checkinId = (await params).id
 
     if (!checkinId) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export async function POST(
 
     const decoded = verifyToken(token)
     const userId = decoded.userId
-    const checkinId = params.id
+    const checkinId = (await params).id
 
     if (!checkinId) {
       return NextResponse.json(

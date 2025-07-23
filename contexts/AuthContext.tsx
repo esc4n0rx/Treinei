@@ -1,23 +1,109 @@
 // contexts/AuthContext.tsx
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { signInWithPopup } from 'firebase/auth'
 import { auth, googleProvider } from '@/lib/firebase'
 import { User, AuthContextType, LoginCredentials, RegisterCredentials, AuthResponse } from '@/types/auth'
 import { authStorage } from '@/lib/auth-storage'
-import { useTokenRefresh } from '@/hooks/useTokenRefresh'
+import { refreshAuthToken } from '@/lib/api/auth-refresh'
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const refreshTimeoutRef = useRef<NodeJS.Timeout>()
+  const isRefreshingRef = useRef(false)
+  const userRef = useRef<User | null>(null)
 
-  // Hook para gerenciar refresh automático do token
-  useTokenRefresh()
+  // Manter referência atualizada do usuário
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
-  // Verificar token armazenado na inicialização
+  /**
+   * Função de logout estável
+   */
+  const logout = useCallback(() => {
+    setUser(null)
+    authStorage.clearAuthData()
+    
+    // Limpar timeout de refresh
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current)
+    }
+    
+    console.log('👋 Logout realizado')
+  }, [])
+
+  /**
+   * Executa refresh do token - função estável
+   */
+  const performRefresh = useCallback(async () => {
+    if (isRefreshingRef.current || !userRef.current) return
+
+    try {
+      isRefreshingRef.current = true
+      console.log('🔄 Iniciando refresh do token...')
+      
+      const result = await refreshAuthToken()
+      
+      if (result.success && result.token && result.user) {
+        // Atualizar storage com novo token
+        authStorage.setAuthData({
+          token: result.token,
+          user: result.user,
+          refreshToken: result.refreshToken,
+          expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dias
+        })
+        
+        setUser(result.user)
+        console.log('✅ Token refreshed com sucesso')
+        
+        // Agendar próximo refresh
+        scheduleNextRefresh()
+      } else {
+        console.error('❌ Falha no refresh do token:', result.error)
+        logout()
+      }
+    } catch (error) {
+      console.error('❌ Erro durante refresh do token:', error)
+      logout()
+    } finally {
+      isRefreshingRef.current = false
+    }
+  }, [logout])
+
+  /**
+   * Agenda o próximo refresh - função estável
+   */
+  const scheduleNextRefresh = useCallback(() => {
+    // Limpar timeout anterior
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current)
+    }
+
+    const authData = authStorage.getAuthData()
+    if (!authData) return
+
+    // Calcular quando fazer o próximo refresh (1 hora antes da expiração)
+    const oneHour = 60 * 60 * 1000
+    const timeUntilRefresh = Math.max(
+      authData.expiresAt - Date.now() - oneHour,
+      60000 // Mínimo de 1 minuto
+    )
+
+    console.log(`⏰ Próximo refresh em ${Math.round(timeUntilRefresh / 1000 / 60)} minutos`)
+
+    refreshTimeoutRef.current = setTimeout(() => {
+      if (authStorage.shouldRefreshToken()) {
+        performRefresh()
+      }
+    }, timeUntilRefresh)
+  }, [performRefresh])
+
+  // Verificar token armazenado na inicialização - SEM DEPENDÊNCIAS INSTÁVEIS
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -44,7 +130,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initializeAuth()
-  }, [])
+  }, []) // SEM DEPENDÊNCIAS - executa apenas uma vez
+
+  // Gerenciar refresh quando usuário muda
+  useEffect(() => {
+    if (user) {
+      // Verificar se precisa fazer refresh imediatamente
+      if (authStorage.shouldRefreshToken()) {
+        performRefresh()
+      } else {
+        scheduleNextRefresh()
+      }
+    }
+
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current)
+      }
+    }
+  }, [user, performRefresh, scheduleNextRefresh])
+
+  // Verificar quando a aba volta a ficar ativa
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userRef.current) {
+        // Verificar se o token expirou enquanto a aba estava inativa
+        const authData = authStorage.getAuthData()
+        if (!authData || authData.expiresAt <= Date.now()) {
+          console.log('🔄 Token expirou enquanto app estava em background')
+          logout()
+        } else if (authStorage.shouldRefreshToken()) {
+          performRefresh()
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [performRefresh, logout])
 
   const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
@@ -61,7 +187,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.success && result.user && result.token) {
         const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dias
         
-        // Usar o novo sistema de storage
         authStorage.setAuthData({
           token: result.token,
           user: result.user,
@@ -162,12 +287,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: 'Erro de conexão. Tente novamente.'
       }
     }
-  }
-
-  const logout = () => {
-    setUser(null)
-    authStorage.clearAuthData()
-    console.log('👋 Logout realizado')
   }
 
   const value: AuthContextType = {

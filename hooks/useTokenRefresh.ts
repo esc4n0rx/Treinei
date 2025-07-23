@@ -4,10 +4,18 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { authStorage } from '@/lib/auth-storage'
 import { refreshAuthToken } from '@/lib/api/auth-refresh'
-import { useAuth } from '@/hooks/useAuth'
 
-export function useTokenRefresh() {
-  const { user, logout } = useAuth()
+interface UseTokenRefreshProps {
+  user: any | null
+  onTokenRefreshed: (tokenData: any) => void
+  onLogout: () => void
+}
+
+/**
+ * Hook personalizado para gerenciar refresh de token
+ * Agora recebe as dependências como parâmetros para evitar ciclo de dependência
+ */
+export function useTokenRefresh({ user, onTokenRefreshed, onLogout }: UseTokenRefreshProps) {
   const refreshTimeoutRef = useRef<NodeJS.Timeout>()
   const isRefreshingRef = useRef(false)
 
@@ -25,27 +33,30 @@ export function useTokenRefresh() {
       
       if (result.success && result.token && result.user) {
         // Atualizar storage com novo token
-        authStorage.setAuthData({
+        const tokenData = {
           token: result.token,
           user: result.user,
           refreshToken: result.refreshToken,
           expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dias
-        })
+        }
+        
+        authStorage.setAuthData(tokenData)
+        onTokenRefreshed(tokenData)
         
         console.log('✅ Token refreshed com sucesso')
         scheduleNextRefresh()
       } else {
         console.error('❌ Falha no refresh do token:', result.error)
         // Token não pode ser renovado, fazer logout
-        logout()
+        onLogout()
       }
     } catch (error) {
       console.error('❌ Erro durante refresh do token:', error)
-      logout()
+      onLogout()
     } finally {
       isRefreshingRef.current = false
     }
-  }, [user, logout])
+  }, [user, onTokenRefreshed, onLogout])
 
   /**
    * Agenda o próximo refresh baseado na expiração do token
@@ -109,7 +120,7 @@ export function useTokenRefresh() {
         const authData = authStorage.getAuthData()
         if (!authData || authData.expiresAt <= Date.now()) {
           console.log('🔄 Token expirou enquanto app estava em background')
-          logout()
+          onLogout()
         } else if (authStorage.shouldRefreshToken()) {
           performRefresh()
         }
@@ -121,10 +132,12 @@ export function useTokenRefresh() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [user, performRefresh, logout])
+  }, [user, performRefresh, onLogout])
 
   return {
     refreshToken: performRefresh,
-    isRefreshing: isRefreshingRef.current
+    isRefreshing: isRefreshingRef.current,
+    scheduleNextRefresh,
+    checkTokenStatus
   }
 }

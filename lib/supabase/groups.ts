@@ -220,7 +220,6 @@ export async function createGroup(data: CreateGroupData, userId: string) {
   }
 }
 
-
 /**
  * Entrar em um grupo
  */
@@ -296,94 +295,92 @@ export async function joinGroup(data: JoinGroupData, userId: string) {
         papel,
         data_entrada,
         status,
-        // Continuação do lib/supabase/groups.ts
+        grupo:treinei_grupos(
+          id,
+          nome,
+          descricao,
+          logo_url,
+          tipo,
+          data_criacao
+        )
+      `)
+      .single()
 
-       grupo:treinei_grupos(
-         id,
-         nome,
-         descricao,
-         logo_url,
-         tipo,
-         data_criacao
-       )
-     `)
-     .single()
+    if (memberError) {
+      console.error('Erro ao entrar no grupo:', memberError)
+      return { success: false, error: 'Erro ao entrar no grupo' }
+    }
 
-   if (memberError) {
-     console.error('Erro ao entrar no grupo:', memberError)
-     return { success: false, error: 'Erro ao entrar no grupo' }
-   }
-
-   return { success: true, membership: memberData }
- } catch (error) {
-   console.error('Erro ao entrar no grupo:', error)
-   return { success: false, error: 'Erro interno' }
- }
+    return { success: true, membership: memberData }
+  } catch (error) {
+    console.error('Erro ao entrar no grupo:', error)
+    return { success: false, error: 'Erro interno' }
+  }
 }
 
 /**
-* Busca detalhes de um grupo específico
-*/
+ * Busca detalhes de um grupo específico
+ */
 export async function getGroupById(groupId: string, userId?: string) {
- try {
-   const { data, error } = await supabase
-     .from('treinei_grupos')
-     .select(`
-       id,
-       nome,
-       descricao,
-       logo_url,
-       tipo,
-       data_criacao,
-       max_membros,
-       status,
-       administrador:treinei_usuarios!administrador_id(
-         id,
-         nome,
-         avatar_url
-       ),
-       membros:treinei_grupos_membros!grupo_id(
-         id,
-         papel,
-         data_entrada,
-         status,
-         usuario:treinei_usuarios!usuario_id(
-           id,
-           nome,
-           avatar_url
-         )
-       )
-     `)
-     .eq('id', groupId)
-     .eq('status', 'ativo')
-     .single()
+  try {
+    const { data, error } = await supabase
+      .from('treinei_grupos')
+      .select(`
+        id,
+        nome,
+        descricao,
+        logo_url,
+        tipo,
+        data_criacao,
+        max_membros,
+        status,
+        administrador:treinei_usuarios!administrador_id(
+          id,
+          nome,
+          avatar_url
+        ),
+        membros:treinei_grupos_membros!grupo_id(
+          id,
+          papel,
+          data_entrada,
+          status,
+          usuario:treinei_usuarios!usuario_id(
+            id,
+            nome,
+            avatar_url
+          )
+        )
+      `)
+      .eq('id', groupId)
+      .eq('status', 'ativo')
+      .single()
 
-   if (error) {
-     console.error('Erro ao buscar grupo:', error)
-     return { success: false, error: 'Grupo não encontrado' }
-   }
+    if (error) {
+      console.error('Erro ao buscar grupo:', error)
+      return { success: false, error: 'Grupo não encontrado' }
+    }
 
-   // Se userId fornecido, verificar se é membro
-   let userMembership = null
-   if (userId) {
-     const membershipData = data.membros?.find(m => m.usuario && 'id' in m.usuario && m.usuario.id === userId && m.status === 'ativo')
-     if (membershipData) {
-       userMembership = {
-         role: membershipData.papel,
-         joinedAt: membershipData.data_entrada
-       }
-     }
-   }
+    // Se userId fornecido, verificar se é membro
+    let userMembership = null
+    if (userId) {
+      const membershipData = data.membros?.find(m => m.usuario && 'id' in m.usuario && m.usuario.id === userId && m.status === 'ativo')
+      if (membershipData) {
+        userMembership = {
+          role: membershipData.papel,
+          joinedAt: membershipData.data_entrada
+        }
+      }
+    }
 
-   const group = {
-     ...data,
-     userMembership,
-     membros: data.membros?.filter(m => m.status === 'ativo') || []
-   }
+    const group = {
+      ...data,
+      userMembership,
+      membros: data.membros?.filter(m => m.status === 'ativo') || []
+    }
 
-   return { success: true, group }
- } catch (error) {
-   console.error('Erro ao buscar grupo:', error)
-   return { success: false, error: 'Erro interno' }
- }
+    return { success: true, group }
+  } catch (error) {
+    console.error('Erro ao buscar grupo:', error)
+    return { success: false, error: 'Erro interno' }
+  }
 }

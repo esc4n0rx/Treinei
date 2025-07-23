@@ -1,3 +1,4 @@
+// lib/api/checkins.ts
 import { CreateCheckinData, CheckinsResponse, CreateCheckinResponse, LikeCheckinResponse, CommentCheckinResponse, CommentsResponse } from '@/types/checkin'
 
 const API_BASE = '/api/checkins'
@@ -35,6 +36,7 @@ export async function createCheckinApi(data: CreateCheckinData): Promise<CreateC
     formData.append('grupo_id', data.grupo_id)
     formData.append('foto', data.foto)
     if (data.observacao) formData.append('observacao', data.observacao)
+    if (data.local) formData.append('local', data.local)
     if (data.data_checkin) formData.append('data_checkin', data.data_checkin)
 
     const response = await fetch(`${API_BASE}/create`, {
