@@ -1,58 +1,73 @@
+// components/create-group-content.tsx
 "use client"
-
-import type React from "react"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/hooks/useAuth"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { createGroupApi } from "@/lib/api/groups"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileInput } from "@/components/ui/file-input"
-import { ArrowLeft, Users, Lock, Globe, Settings, Info, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useGroups } from "@/hooks/useGroups"
-import { toast } from "sonner"
-import Link from "next/link"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ArrowLeft, Info, Settings, Globe, Lock, Loader2, Upload, X } from "lucide-react"
 
+// Categorias disponíveis para grupos
 const groupCategories = [
-  { id: "gym", label: "Academia", color: "bg-blue-500" },
-  { id: "running", label: "Corrida", color: "bg-green-500" },
+  { id: "fitness", label: "Fitness", color: "bg-red-500" },
+  { id: "musculacao", label: "Musculação", color: "bg-blue-500" },
+  { id: "cardio", label: "Cardio", color: "bg-green-500" },
   { id: "yoga", label: "Yoga", color: "bg-purple-500" },
-  { id: "cycling", label: "Ciclismo", color: "bg-orange-500" },
-  { id: "swimming", label: "Natação", color: "bg-cyan-500" },
-  { id: "martial-arts", label: "Artes Marciais", color: "bg-red-500" },
-  { id: "dance", label: "Dança", color: "bg-pink-500" },
-  { id: "other", label: "Outros", color: "bg-gray-500" },
+  { id: "crossfit", label: "CrossFit", color: "bg-orange-500" },
+  { id: "corrida", label: "Corrida", color: "bg-yellow-500" },
 ]
 
+interface FormData {
+  nome: string
+  descricao: string
+  tipo: "publico" | "privado"
+  senha: string
+  max_membros: string
+}
+
 export function CreateGroupContent() {
-  const [mounted, setMounted] = useState(false)
+  // Verificação de hidratação para evitar problemas de SSR
+  const [isMounted, setIsMounted] = useState(false)
+  const { isAuthenticated, loading: authLoading } = useAuth()
+  const router = useRouter()
+
   const [activeTab, setActiveTab] = useState("info")
-  const [formData, setFormData] = useState({
+  const [isCreating, setIsCreating] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [formData, setFormData] = useState<FormData>({
     nome: "",
     descricao: "",
-    tipo: "publico" as "publico" | "privado",
+    tipo: "publico",
     senha: "",
     max_membros: "",
   })
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  
-  const router = useRouter()
-  const { createGroup, isCreating } = useGroups()
 
-  // Verificar se o componente foi montado no cliente
+  // Controle de hidratação
   useEffect(() => {
-    setMounted(true)
+    setIsMounted(true)
   }, [])
 
-  // Não renderizar nada até que o componente seja montado no cliente
-  if (!mounted) {
+  // Redirecionamento se não autenticado
+  useEffect(() => {
+    if (isMounted && !authLoading && !isAuthenticated) {
+      router.push('/')
+    }
+  }, [isMounted, isAuthenticated, authLoading, router])
+
+  // Não renderizar até a hidratação estar completa
+  if (!isMounted || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -63,69 +78,50 @@ export function CreateGroupContent() {
     )
   }
 
+  // Se não autenticado, não renderizar conteúdo
+  if (!isAuthenticated) {
+    return null
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Arquivo muito grande. Máximo 5MB.")
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error("Por favor selecione uma imagem.")
+        return
+      }
+      setSelectedFile(file)
+    }
+  }
+
   const handleCategoryToggle = (categoryId: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categoryId) ?
-        prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+    setSelectedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
     )
-  }
-
-  const handleFileChange = (file: File | null) => {
-  if (file) {
-    // Validar tipo de arquivo
-    if (!file.type.startsWith('image/')) {
-      toast.error('Por favor, selecione apenas arquivos de imagem')
-      return
-    }
-    
-    // Validar tamanho (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('A imagem deve ter no máximo 5MB')
-      return
-    }
-    
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
-  } else {
-    setPreviewUrl(null)
-  }
-  
-  setSelectedFile(file)
-}
-
-  const validateForm = (): boolean => {
-    if (!formData.nome.trim()) {
-      toast.error("Nome do grupo é obrigatório")
-      setActiveTab("info")
-      return false
-    }
-
-    if (formData.tipo === 'privado' && !formData.senha.trim()) {
-      toast.error("Senha é obrigatória para grupos privados")
-      setActiveTab("settings")
-      return false
-    }
-
-    if (formData.max_membros && (parseInt(formData.max_membros) < 2 || parseInt(formData.max_membros) > 1000)) {
-      toast.error("Limite de membros deve ser entre 2 e 1000")
-      setActiveTab("settings")
-      return false
-    }
-
-    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!validateForm()) return
 
-    console.log('Dados do formulário:', {
-      ...formData,
-      selectedFile: selectedFile ? { name: selectedFile.name, size: selectedFile.size } : null
-    })
+    if (!formData.nome.trim()) {
+      toast.error("Nome do grupo é obrigatório")
+      return
+    }
 
-    const result = await createGroup({
+    if (formData.tipo === 'privado' && !formData.senha.trim()) {
+      toast.error("Senha é obrigatória para grupos privados")
+      return
+    }
+
+    setIsCreating(true)
+
+    const result = await createGroupApi({
       nome: formData.nome.trim(),
       descricao: formData.descricao.trim() || undefined,
       tipo: formData.tipo,
@@ -138,6 +134,8 @@ export function CreateGroupContent() {
       toast.success("Grupo criado com sucesso!")
       router.push("/groups")
     }
+
+    setIsCreating(false)
   }
 
   const getTabIcon = (tab: string) => {
@@ -223,16 +221,12 @@ export function CreateGroupContent() {
                       <Label htmlFor="nome">Nome do Grupo *</Label>
                       <Input
                         id="nome"
-                        placeholder="Ex: Treino da Galera"
+                        placeholder="Ex: Academia Central"
                         value={formData.nome}
                         onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                        maxLength={50}
-                        className="glass bg-white/5"
+                        className="glass"
                         required
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Máximo 50 caracteres
-                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -242,25 +236,66 @@ export function CreateGroupContent() {
                         placeholder="Descreva o objetivo do seu grupo..."
                         value={formData.descricao}
                         onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                        maxLength={200}
-                        className="glass bg-white/5 min-h-[80px]"
+                        className="glass resize-none"
+                        rows={3}
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Máximo 200 caracteres. Opcional, mas recomendado.
-                      </p>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label>Logo do Grupo</Label>
-                      <FileInput
-                          value={selectedFile}
-                          onChange={handleFileChange}
-                          preview={previewUrl}
-                          className="glass bg-white/5"
-                        />
-                      <p className="text-xs text-muted-foreground">
-                        Formatos aceitos: PNG, JPG, JPEG. Máximo: 5MB
-                      </p>
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="h-16 w-16">
+                          <AvatarImage 
+                            src={selectedFile ? URL.createObjectURL(selectedFile) : "/placeholder.svg"} 
+                          />
+                          <AvatarFallback className="text-lg">
+                            {formData.nome
+                              .split(" ")
+                              .map(n => n[0])
+                              .join("")
+                              .toUpperCase() || "GR"}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="glass hover:bg-white/10"
+                              onClick={() => document.getElementById('logo-upload')?.click()}
+                            >
+                              <Upload className="h-3 w-3 mr-1" />
+                              Escolher Imagem
+                            </Button>
+                            
+                            {selectedFile && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedFile(null)}
+                                className="glass hover:bg-red-500/20"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          
+                          <input
+                            id="logo-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
+                          
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Formatos: JPG, PNG, GIF. Máximo: 5MB
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-3">
@@ -314,29 +349,7 @@ export function CreateGroupContent() {
                             setFormData(prev => ({ 
                               ...prev, 
                               tipo: checked ? "publico" : "privado",
-                              senha: checked ? "" : prev.senha 
-                            }))
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <Lock className="h-4 w-4 text-orange-500" />
-                            <span className="font-medium">Grupo Privado</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Apenas pessoas com a senha podem entrar
-                          </p>
-                        </div>
-                        <Switch
-                          checked={formData.tipo === "privado"}
-                          onCheckedChange={(checked) => 
-                            setFormData(prev => ({ 
-                              ...prev, 
-                              tipo: checked ? "privado" : "publico",
-                              senha: !checked ? "" : prev.senha 
+                              senha: checked ? "" : prev.senha
                             }))
                           }
                         />
@@ -346,56 +359,47 @@ export function CreateGroupContent() {
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-2"
+                          className="space-y-4 border-t pt-4"
                         >
-                          <Label htmlFor="senha">Senha do Grupo *</Label>
-                          <Input
-                            id="senha"
-                            type="password"
-                            placeholder="Digite uma senha segura"
-                            value={formData.senha}
-                            onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
-                            className="glass bg-white/5"
-                            minLength={4}
-                            maxLength={20}
-                            required={formData.tipo === "privado"}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Mínimo: 4 caracteres, Máximo: 20 caracteres
-                          </p>
+                          <div className="flex items-center space-x-2 text-orange-400">
+                            <Lock className="h-4 w-4" />
+                            <span className="font-medium">Grupo Privado</span>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="senha">Senha de Acesso *</Label>
+                            <Input
+                              id="senha"
+                              type="password"
+                              placeholder="Digite uma senha forte"
+                              value={formData.senha}
+                              onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
+                              className="glass"
+                              required={formData.tipo === "privado"}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Será necessária para novos membros entrarem no grupo
+                            </p>
+                          </div>
                         </motion.div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="glass">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Users className="h-5 w-5" />
-                      <span>Limite de Membros</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Controle quantas pessoas podem participar
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="max_membros">Número Máximo de Membros</Label>
-                      <Input
-                        id="max_membros"
-                        type="number"
-                        placeholder="Ex: 50 (deixe vazio para ilimitado)"
-                        value={formData.max_membros}
-                        onChange={(e) => setFormData(prev => ({ ...prev, max_membros: e.target.value }))}
-                        min={2}
-                        max={1000}
-                        className="glass bg-white/5"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Mínimo: 2, Máximo: 1000
-                      </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="max_membros">Limite de Membros (Opcional)</Label>
+                        <Input
+                          id="max_membros"
+                          type="number"
+                          placeholder="Ex: 50"
+                          min="2"
+                          max="1000"
+                          value={formData.max_membros}
+                          onChange={(e) => setFormData(prev => ({ ...prev, max_membros: e.target.value }))}
+                          className="glass"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Deixe em branco para permitir membros ilimitados
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

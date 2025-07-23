@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/contexts/AuthContext"
+import { Providers } from "./providers"
 import { UpdatePrompt } from "@/components/update-prompt"
 import { Toaster } from "sonner"
 
@@ -33,8 +33,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
-          <AuthProvider>
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
             {children}
             <UpdatePrompt />
             <Toaster
@@ -48,8 +48,8 @@ export default function RootLayout({
                 },
               }}
             />
-          </AuthProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )
