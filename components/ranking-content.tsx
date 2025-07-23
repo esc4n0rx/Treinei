@@ -1,32 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Medal, Award, Calendar, TrendingUp } from "lucide-react"
-
-const weeklyRanking = [
-  { id: 1, name: "João Silva", avatar: "/placeholder.svg?height=40&width=40", checkins: 7, position: 1 },
-  { id: 2, name: "Maria Santos", avatar: "/placeholder.svg?height=40&width=40", checkins: 6, position: 2 },
-  { id: 3, name: "Pedro Costa", avatar: "/placeholder.svg?height=40&width=40", checkins: 5, position: 3 },
-  { id: 4, name: "Ana Lima", avatar: "/placeholder.svg?height=40&width=40", checkins: 4, position: 4 },
-  { id: 5, name: "Carlos Souza", avatar: "/placeholder.svg?height=40&width=40", checkins: 3, position: 5 },
-]
-
-const monthlyRanking = [
-  { id: 1, name: "Maria Santos", avatar: "/placeholder.svg?height=40&width=40", checkins: 28, position: 1 },
-  { id: 2, name: "João Silva", avatar: "/placeholder.svg?height=40&width=40", checkins: 25, position: 2 },
-  { id: 3, name: "Pedro Costa", avatar: "/placeholder.svg?height=40&width=40", checkins: 22, position: 3 },
-  { id: 4, name: "Ana Lima", avatar: "/placeholder.svg?height=40&width=40", checkins: 18, position: 4 },
-  { id: 5, name: "Carlos Souza", avatar: "/placeholder.svg?height=40&width=40", checkins: 15, position: 5 },
-]
+import { Trophy, Medal, Award, Calendar, TrendingUp, Loader2, Users } from "lucide-react"
+import { useRanking } from "@/hooks/useRanking"
+import { useGroups } from "@/hooks/useGroups"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function RankingContent() {
   const [period, setPeriod] = useState<"weekly" | "monthly">("weekly")
+  const { user } = useAuth()
+  const { activeGroup } = useGroups()
+  const { weeklyRanking, monthlyRanking, loading, error } = useRanking(activeGroup?.id)
+
   const ranking = period === "weekly" ? weeklyRanking : monthlyRanking
+  const userPosition = ranking?.user_position
 
   const getPositionIcon = (position: number) => {
     switch (position) {
@@ -54,11 +46,72 @@ export function RankingContent() {
     }
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="p-4 space-y-6">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
+          <h1 className="text-3xl font-bold">Ranking</h1>
+          <p className="text-muted-foreground mt-2">Veja quem está liderando</p>
+        </motion.div>
+        
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Carregando ranking...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-4 space-y-6">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
+          <h1 className="text-3xl font-bold">Ranking</h1>
+          <p className="text-muted-foreground mt-2">Veja quem está liderando</p>
+        </motion.div>
+        
+        <Card className="glass-card">
+          <CardContent className="p-6 text-center">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar ranking</h3>
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Empty state
+  if (!ranking || ranking.usuarios.length === 0) {
+    return (
+      <div className="p-4 space-y-6">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
+          <h1 className="text-3xl font-bold">Ranking</h1>
+          <p className="text-muted-foreground mt-2">Veja quem está liderando</p>
+          </motion.div>
+        
+        <Card className="glass-card">
+          <CardContent className="p-6 text-center">
+            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum check-in encontrado</h3>
+            <p className="text-muted-foreground">
+              Seja o primeiro a fazer check-in neste {period === "weekly" ? "semana" : "mês"}!
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
         <h1 className="text-3xl font-bold">Ranking</h1>
-        <p className="text-muted-foreground mt-2">Veja quem está liderando</p>
+        <p className="text-muted-foreground mt-2">
+          {activeGroup?.nome || "Grupo"} - {period === "weekly" ? "Esta semana" : "Este mês"}
+        </p>
       </motion.div>
 
       <motion.div
@@ -86,34 +139,47 @@ export function RankingContent() {
       </motion.div>
 
       <div className="space-y-3">
-        {ranking.map((user, index) => (
+        {ranking.usuarios.map((usuario, index) => (
           <motion.div
-            key={`${period}-${user.id}`}
+            key={`${period}-${usuario.id}`}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 + index * 0.1 }}
           >
             <Card
-              className={`glass-card bg-gradient-to-r ${getPositionColor(user.position)} hover:scale-[1.02] transition-all duration-300`}
+              className={`glass-card bg-gradient-to-r ${getPositionColor(usuario.posicao)} hover:scale-[1.02] transition-all duration-300 ${
+                usuario.id === user?.id ? 'ring-2 ring-primary/50' : ''
+              }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-12 h-12">{getPositionIcon(user.position)}</div>
+                  <div className="flex items-center justify-center w-12 h-12">
+                    {getPositionIcon(usuario.posicao)}
+                  </div>
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} />
+                    <AvatarImage src={usuario.avatar_url || "/placeholder.svg"} />
                     <AvatarFallback>
-                      {user.name
+                      {usuario.nome
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-semibold">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.checkins} check-ins</p>
+                    <div className="flex items-center space-x-2">
+                      <p className="font-semibold">{usuario.nome}</p>
+                      {usuario.id === user?.id && (
+                        <Badge variant="secondary" className="text-xs">
+                          Você
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {usuario.checkins_count} check-in{usuario.checkins_count !== 1 ? 's' : ''}
+                    </p>
                   </div>
                   <Badge variant="secondary" className="glass text-lg px-3 py-1">
-                    {user.checkins}
+                    {usuario.checkins_count}
                   </Badge>
                 </div>
               </CardContent>
@@ -122,6 +188,7 @@ export function RankingContent() {
         ))}
       </div>
 
+      {/* Suas Estatísticas */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
         <Card className="glass-card">
           <CardHeader>
@@ -134,11 +201,15 @@ export function RankingContent() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-primary">4º</p>
+                <p className="text-2xl font-bold text-primary">
+                  {userPosition ? `${userPosition.posicao}º` : '-'}
+                </p>
                 <p className="text-sm text-muted-foreground">Posição</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-500">{period === "weekly" ? "4" : "18"}</p>
+                <p className="text-2xl font-bold text-green-500">
+                  {userPosition ? userPosition.checkins_count : 0}
+                </p>
                 <p className="text-sm text-muted-foreground">Check-ins</p>
               </div>
             </div>
@@ -148,3 +219,4 @@ export function RankingContent() {
     </div>
   )
 }
+          
