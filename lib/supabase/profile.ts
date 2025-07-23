@@ -132,7 +132,6 @@ export async function getUserStats(userId: string): Promise<{ success: boolean; 
 */
 async function calculateBestStreak(userId: string): Promise<number> {
  try {
-  // Buscar todos os check-ins ordenados por data
   const { data: checkins } = await supabase
    .from('treinei_checkins')
    .select('data_checkin')
@@ -143,11 +142,9 @@ async function calculateBestStreak(userId: string): Promise<number> {
 
   let maxStreak = 1
   let currentStreak = 1
-    // AJUSTE: A tipagem já foi corrigida no arquivo que você me enviou, mantendo a consistência.
   let lastDate = new Date((checkins[0] as { data_checkin: string }).data_checkin)
 
   for (let i = 1; i < checkins.length; i++) {
-        // AJUSTE: A tipagem já foi corrigida no arquivo que você me enviou, mantendo a consistência.
    const currentDate = new Date((checkins[i] as { data_checkin: string }).data_checkin)
    const dayDiff = Math.floor((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
    

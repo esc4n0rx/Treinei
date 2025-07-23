@@ -1,3 +1,4 @@
+// types/auth.ts
 export interface User {
   id: string
   nome: string
@@ -22,6 +23,7 @@ export interface AuthResponse {
   success: boolean
   user?: User
   token?: string
+  refreshToken?: string // Novo campo para refresh token
   error?: string
 }
 
