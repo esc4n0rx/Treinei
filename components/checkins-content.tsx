@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { CheckinModal } from "@/components/checkin-modal"
+import { CheckinActions } from "@/components/checkin-actions"
+import { CommentDialog } from "@/components/comment-dialog"
 import { GroupEmptyState } from "@/components/group-empty-state"
-import { Camera, Heart, MessageCircle, Clock, Calendar, MapPin, Loader2, Building } from "lucide-react"
+import { Camera, Clock, MapPin, Building, Loader2 } from "lucide-react"
 import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
-
+import { CheckinComment } from "@/types/checkin"
+import { toast } from "sonner"
 
 const formatCheckinDate = (dateString: string): string => {
   try {
@@ -38,6 +41,11 @@ const formatCheckinDate = (dateString: string): string => {
 
 export function CheckinsContent() {
   const [checkinModalOpen, setCheckinModalOpen] = useState(false)
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false)
+  const [selectedCheckinId, setSelectedCheckinId] = useState<string | null>(null)
+  const [checkinComments, setCheckinComments] = useState<{ [key: string]: CheckinComment[] }>({})
+  const [loadingComments, setLoadingComments] = useState(false)
+  
   const { activeGroup, hasGroups, loading: groupsLoading } = useGroups()
   const { 
     checkins, 
@@ -51,6 +59,92 @@ export function CheckinsContent() {
       loadGroupCheckins(activeGroup.id)
     }
   }, [activeGroup?.id, loadGroupCheckins])
+
+  const handleLike = async (checkinId: string) => {
+    try {
+      const token = localStorage.getItem('treinei_token')
+      const response = await fetch(`/api/checkins/${checkinId}/like`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+      
+      if (result.success && activeGroup?.id) {
+        // Recarregar checkins para atualizar contadores
+        await loadGroupCheckins(activeGroup.id)
+      } else {
+        toast.error(result.error || 'Erro ao curtir check-in')
+      }
+    } catch (error) {
+      toast.error('Erro de conexão ao curtir check-in')
+    }
+  }
+
+  const handleComment = async (checkinId: string) => {
+    setSelectedCheckinId(checkinId)
+    setLoadingComments(true)
+    
+    try {
+      const token = localStorage.getItem('treinei_token')
+      const response = await fetch(`/api/checkins/${checkinId}/comments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+      
+      if (result.success && result.comments) {
+        setCheckinComments(prev => ({
+          ...prev,
+          [checkinId]: result.comments
+        }))
+      }
+    } catch (error) {
+      toast.error('Erro ao carregar comentários')
+    } finally {
+      setLoadingComments(false)
+      setCommentDialogOpen(true)
+    }
+  }
+
+  const handleAddComment = async (checkinId: string, content: string) => {
+    try {
+      const token = localStorage.getItem('treinei_token')
+      const response = await fetch(`/api/checkins/${checkinId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ conteudo: content })
+      })
+
+      const result = await response.json()
+      
+      if (result.success && result.comment) {
+        // Atualizar comentários localmente
+        setCheckinComments(prev => ({
+          ...prev,
+          [checkinId]: [...(prev[checkinId] || []), result.comment]
+        }))
+        
+        // Recarregar checkins para atualizar contador
+        if (activeGroup?.id) {
+          await loadGroupCheckins(activeGroup.id)
+        }
+      } else {
+        toast.error(result.error || 'Erro ao adicionar comentário')
+      }
+    } catch (error) {
+      toast.error('Erro de conexão ao comentar')
+    }
+  }
 
   if (groupsLoading) {
     return (
@@ -76,22 +170,22 @@ export function CheckinsContent() {
         </p>
       </motion.div>
 
-      {/* Stats do usuário */}
+      {/* Stats do usuário - mais compacto */}
       {userStats && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="glass-card">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-3 gap-4 text-center">
+            <CardContent className="p-3">
+              <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-primary">{userStats.today}</p>
+                  <p className="text-xl font-bold text-primary">{userStats.today}</p>
                   <p className="text-xs text-muted-foreground">Hoje</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-500">{userStats.weekly}</p>
+                  <p className="text-xl font-bold text-green-500">{userStats.weekly}</p>
                   <p className="text-xs text-muted-foreground">Esta Semana</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-500">{userStats.total}</p>
+                  <p className="text-xl font-bold text-purple-500">{userStats.total}</p>
                   <p className="text-xs text-muted-foreground">Total</p>
                 </div>
               </div>
@@ -100,20 +194,17 @@ export function CheckinsContent() {
         </motion.div>
       )}
 
-      {/* Botão de Check-in */}
+      {/* Botão de Check-in - mais compacto */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Button
           onClick={() => setCheckinModalOpen(true)}
-          className="w-full glass hover:bg-white/20 h-16"
+          className="w-full glass hover:bg-white/20 h-12"
           disabled={!activeGroup || ((userStats?.today ?? 0) > 0)}
         >
-          <Camera className="h-6 w-6 mr-3" />
+          <Camera className="h-5 w-5 mr-2" />
           <div className="text-left">
-            <p className="text-base font-medium">
+            <p className="text-sm font-medium">
               {(userStats?.today ?? 0) > 0 ? 'Check-in já realizado hoje!' : 'Fazer Check-in'}
-            </p>
-            <p className="text-sm opacity-75">
-              {(userStats?.today ?? 0) > 0 ?  'Volte amanhã para um novo check-in' : 'Registre seu treino de hoje'}
             </p>
           </div>
         </Button>
@@ -127,8 +218,8 @@ export function CheckinsContent() {
         </div>
       )}
 
-      {/* Lista de Check-ins */}
-      <div className="space-y-4">
+      {/* Lista de Check-ins - design mais compacto */}
+      <div className="space-y-3">
         {!checkinsLoading && checkins.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -152,10 +243,10 @@ export function CheckinsContent() {
             transition={{ delay: 0.3 + index * 0.1 }}
           >
             <Card className="glass-card overflow-hidden">
-              {/* Header */}
-              <div className="p-4 pb-3">
+              {/* Header compacto */}
+              <div className="p-3 pb-2">
                 <div className="flex items-center space-x-3">
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={checkin.usuario?.avatar_url || "/placeholder.svg"} />
                     <AvatarFallback>
                       {checkin.usuario?.nome
@@ -165,76 +256,73 @@ export function CheckinsContent() {
                     </AvatarFallback>
                   </Avatar>
                   
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <p className="font-medium">{checkin.usuario?.nome || 'Usuário'}</p>
-                      <Badge variant="secondary" className="glass text-xs">
+                      <p className="font-medium text-sm truncate">{checkin.usuario?.nome || 'Usuário'}</p>
+                      <Badge variant="secondary" className="glass text-xs px-1.5 py-0.5">
                         Check-in
                       </Badge>
                     </div>
-                    <div className="flex items-center space-x-3 text-sm text-muted-foreground mt-1">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatCheckinDate(checkin.data_checkin)}</span>
-                      </div>
+                    <div className="flex items-center space-x-2 text-xs text-muted-foreground mt-0.5">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatCheckinDate(checkin.data_checkin)}</span>
                       {checkin.local && (
-                       <div className="flex items-center space-x-1">
-                         <Building className="h-3 w-3" />
-                         <span className="truncate max-w-[120px]">{checkin.local}</span>
-                       </div>
-                     )}
-                     {checkin.grupo && (
-                       <>
-                         <span>•</span>
-                         <div className="flex items-center space-x-1">
-                           <MapPin className="h-3 w-3" />
-                           <span className="truncate max-w-[100px]">{checkin.grupo.nome}</span>
-                         </div>
-                       </>
-                     )}
-                   </div>
-                 </div>
-               </div>
-             </div>
+                        <>
+                          <span>•</span>
+                          <Building className="h-3 w-3" />
+                          <span className="truncate max-w-[80px]">{checkin.local}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-             {/* Foto */}
-             <div className="aspect-video bg-muted overflow-hidden">
-               <img
-                 src={checkin.foto_url}
-                 alt="Check-in"
-                 className="w-full h-full object-cover"
-                 loading="lazy"
-               />
-             </div>
+              {/* Foto com aspect ratio mais baixo */}
+              <div className="aspect-[4/3] bg-muted overflow-hidden">
+                <img
+                  src={checkin.foto_url}
+                  alt="Check-in"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
 
-             {/* Conteúdo */}
-             <div className="p-4">
-               {checkin.observacao && (
-                 <div className="mb-4">
-                   <p className="text-sm text-foreground">{checkin.observacao}</p>
-                 </div>
-               )}
+              {/* Conteúdo */}
+              <div className="p-3">
+                {checkin.observacao && (
+                  <div className="mb-3">
+                    <p className="text-sm text-foreground line-clamp-2">{checkin.observacao}</p>
+                  </div>
+                )}
 
-               <div className="flex items-center space-x-4">
-                 <Button variant="ghost" size="sm" className="glass hover:bg-white/10 p-2">
-                   <Heart className="h-4 w-4 mr-2" />
-                   <span className="text-sm">Curtir</span>
-                 </Button>
-                 <Button variant="ghost" size="sm" className="glass hover:bg-white/10 p-2">
-                   <MessageCircle className="h-4 w-4 mr-2" />
-                   <span className="text-sm">Comentar</span>
-                 </Button>
-               </div>
-             </div>
-           </Card>
-         </motion.div>
-       ))}
-     </div>
+                <CheckinActions
+                  checkinId={checkin.id}
+                  likesCount={checkin._count?.curtidas || 0}
+                  commentsCount={checkin._count?.comentarios || 0}
+                  userLiked={checkin.userLiked || false}
+                  onLike={handleLike}
+                  onComment={handleComment}
+                />
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
 
-     <CheckinModal
-       open={checkinModalOpen}
-       onOpenChange={setCheckinModalOpen}
-     />
-   </div>
- )
+      <CheckinModal
+        open={checkinModalOpen}
+        onOpenChange={setCheckinModalOpen}
+      />
+
+      <CommentDialog
+        open={commentDialogOpen}
+        onOpenChange={setCommentDialogOpen}
+        checkinId={selectedCheckinId || ''}
+        comments={selectedCheckinId ? checkinComments[selectedCheckinId] || [] : []}
+        onAddComment={handleAddComment}
+        loading={loadingComments}
+      />
+    </div>
+  )
 }

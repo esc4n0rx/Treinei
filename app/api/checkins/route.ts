@@ -27,16 +27,41 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Verificar se o usuário é membro do grupo
+    // Buscar check-ins do grupo
     const result = await getGroupCheckins(groupId)
 
-    if (result.success) {
-      // Também retornar estatísticas do usuário
+    if (result.success && result.checkins) {
+
+      const checkinsWithUserLikes = await Promise.all(
+        result.checkins.map(async (checkin:any) => {
+          try {
+            const { supabase } = await import('@/lib/supabase')
+            const { data: userLike } = await supabase
+              .from('treinei_checkins_curtidas')
+              .select('id')
+              .eq('checkin_id', checkin.id)
+              .eq('usuario_id', userId)
+              .single()
+
+            return {
+              ...checkin,
+              userLiked: !!userLike
+            }
+          } catch (error) {
+            return {
+              ...checkin,
+              userLiked: false
+            }
+          }
+        })
+      )
+
+      // Buscar estatísticas do usuário
       const statsResult = await getUserCheckinStats(userId, groupId)
       
       return NextResponse.json({
         success: true,
-        checkins: result.checkins,
+        checkins: checkinsWithUserLikes,
         userStats: statsResult.success ? statsResult.stats : null
       })
     } else {
