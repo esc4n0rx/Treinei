@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Trophy, Medal, Award, Calendar, TrendingUp, Loader2, Users } from "lucide-react"
 import { useRanking } from "@/hooks/useRanking"
 import { useGroups } from "@/hooks/useGroups"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from "@/hooks/useAuth"
 
 export function RankingContent() {
   const [period, setPeriod] = useState<"weekly" | "monthly">("weekly")
@@ -219,4 +219,3 @@ export function RankingContent() {
     </div>
   )
 }
-          

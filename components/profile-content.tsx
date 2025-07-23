@@ -12,7 +12,7 @@ import { Settings, Moon, Sun, Users, Trophy, Calendar, LogOut, Edit, Bell, Shiel
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { useProfile } from "@/hooks/useProfile"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from "@/hooks/useAuth"
 
 export function ProfileContent() {
   const { theme, setTheme } = useTheme()
