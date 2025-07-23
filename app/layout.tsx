@@ -1,6 +1,6 @@
 // app/layout.tsx
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -14,9 +14,15 @@ export const metadata: Metadata = {
   title: "Treinei - Fitness Tracker PWA",
   description: "Track your fitness journey with friends",
   manifest: "/manifest.json",
-  themeColor: "#000000",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   generator: 'v0.dev'
+}
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
@@ -31,7 +37,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
             <UpdatePrompt />
-            <Toaster 
+            <Toaster
               position="top-center"
               toastOptions={{
                 style: {
