@@ -56,12 +56,13 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const [observacao, setObservacao] = useState("")
   const [local, setLocal] = useState("")
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+  
+  // CORREÇÃO: Inicializa o estado com a data e hora local do dispositivo, sem ajustes manuais de fuso horário.
+  // O objeto `new Date()` já contém a informação correta do timezone do browser.
   const [selectedDate, setSelectedDate] = useState(() => {
-    const now = new Date()
-    // Ajustar para timezone de São Paulo (UTC-3)
-    const spTime = new Date(now.getTime() - (3 * 60 * 60 * 1000))
-    return formatDateForInput(spTime)
-  })
+    const now = new Date();
+    return formatDateForInput(now);
+  });
 
   const handlePhotoCapture = (file: File) => {
     setSelectedPhoto(file)
@@ -107,11 +108,11 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
       setPreviewUrl(null)
       setObservacao("")
       setLocal("")
+      // CORREÇÃO: Reseta o estado para a data e hora local atual após o envio.
       setSelectedDate(() => {
-        const now = new Date()
-        const spTime = new Date(now.getTime() - (3 * 60 * 60 * 1000))
-        return formatDateForInput(spTime)
-      })
+        const now = new Date();
+        return formatDateForInput(now);
+      });
       onOpenChange(false)
     }
   }
@@ -269,7 +270,7 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Timezone: São Paulo (GMT-3)
+              Seu fuso horário local será usado.
             </p>
           </div>
 
