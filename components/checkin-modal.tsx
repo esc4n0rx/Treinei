@@ -15,7 +15,6 @@ import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import { toast } from "sonner"
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
-import 'react-image-crop/dist/ReactCrop.css'
 import imageCompression from "browser-image-compression"
 
 interface CheckinModalProps {
