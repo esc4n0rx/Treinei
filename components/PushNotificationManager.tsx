@@ -11,13 +11,11 @@ export function PushNotificationManager() {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // A verificação inicial já previne a execução se messaging for nulo
-    if (!isAuthenticated || typeof window === 'undefined' || !messaging) {
+    if (!isAuthenticated || typeof window === 'undefined') {
       return;
     }
 
     const requestPermissionAndGetToken = async () => {
-      // Adicionamos uma verificação de segurança para o TypeScript
       if (!messaging) {
         console.error("Firebase Messaging não está inicializado.");
         return;
@@ -25,7 +23,10 @@ export function PushNotificationManager() {
 
       try {
         // 1. Solicitar permissão
+        console.log('Solicitando permissão para notificações...');
         const permission = await Notification.requestPermission();
+        console.log('Status da permissão:', permission);
+
         if (permission !== 'granted') {
           console.log('Permissão para notificações negada.');
           return;
@@ -38,15 +39,17 @@ export function PushNotificationManager() {
           return;
         }
 
-        // 3. Obter o token FCM - Agora seguro contra nulos
+        // 3. Obter o token FCM
+        console.log('Obtendo token FCM...');
         const fcmToken = await getToken(messaging, { vapidKey });
 
         if (fcmToken) {
-          console.log('FCM Token:', fcmToken);
+          console.log('Token FCM obtido com sucesso:', fcmToken);
           // 4. Enviar token para o backend
           await sendTokenToServer(fcmToken);
         } else {
-          console.log('Não foi possível obter o token FCM.');
+          console.log('Não foi possível obter o token FCM. O Service Worker está registrado corretamente?');
+          toast.error('Não foi possível registrar para notificações. Tente limpar o cache do navegador.');
         }
 
       } catch (error) {
@@ -58,6 +61,7 @@ export function PushNotificationManager() {
     const sendTokenToServer = async (fcm_token: string) => {
       try {
         const authToken = localStorage.getItem('treinei_token');
+        console.log('Enviando token para o servidor...');
         const response = await fetch('/api/subscriptions', {
           method: 'POST',
           headers: {
@@ -72,6 +76,8 @@ export function PushNotificationManager() {
           // Não mostrar erro se o dispositivo já está registrado (409 Conflict)
           if (response.status !== 409) {
              toast.error(data.error || 'Erro ao registrar para notificações.');
+          } else {
+            console.log('Token já registrado no servidor.');
           }
         } else {
           console.log('Token FCM enviado para o servidor com sucesso.');
@@ -81,7 +87,10 @@ export function PushNotificationManager() {
       }
     };
 
-    requestPermissionAndGetToken();
+    // Adiciona um pequeno delay para garantir que o service worker principal teve tempo de se registrar.
+    setTimeout(() => {
+        requestPermissionAndGetToken();
+    }, 1000);
 
   }, [isAuthenticated]);
 
