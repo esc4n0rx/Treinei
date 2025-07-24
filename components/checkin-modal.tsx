@@ -16,12 +16,9 @@ import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import { toast } from "sonner"
 
-// Import dinâmico mais robusto para o novo ImageCropper
+// Import dinâmico mais simples
 const ImageCropper = dynamic(
-  () => import('./image-cropper').then(mod => {
-    console.log('✅ Novo ImageCropper carregado')
-    return mod.ImageCropper
-  }),
+  () => import('./image-cropper').then(mod => mod.ImageCropper),
   {
     ssr: false,
     loading: () => (
@@ -60,7 +57,7 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const [observacao, setObservacao] = useState("")
   const [local, setLocal] = useState("")
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(() => formatDateForInput(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => formatDateForInput(new Date()))
   const [imageToCrop, setImageToCrop] = useState<string>("")
 
   const handleImageSelected = useCallback((file: File) => {
@@ -70,16 +67,12 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
       type: file.type
     })
     
-    // Validar se é uma imagem
     if (!file.type.startsWith('image/')) {
-      console.error('❌ Arquivo não é uma imagem:', file.type)
-      toast.error("Por favor,selecione um arquivo de imagem válido.")
+      toast.error("Por favor, selecione um arquivo de imagem válido.")
       return
     }
 
-    // Validar tamanho (máximo 10MB antes do processamento)
     if (file.size > 10 * 1024 * 1024) {
-      console.error('❌ Arquivo muito grande:', file.size)
       toast.error("Imagem muito grande. Máximo 10MB.")
       return
     }
@@ -87,22 +80,10 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
     const reader = new FileReader()
     reader.onload = () => {
       const result = reader.result as string
-      console.log('📸 Imagem convertida para base64:', {
-        length: result.length,
-        type: result.substring(0, 30),
-        isValidDataUrl: result.startsWith('data:image/')
-      })
-      
-      if (!result.startsWith('data:image/')) {
-        console.error('❌ Base64 inválido gerado')
-        toast.error("Erro ao processar a imagem.")
-        return
-      }
-      
+      console.log('📸 Definindo imagem para crop')
       setImageToCrop(result)
     }
-    reader.onerror = (error) => {
-      console.error('❌ Erro ao ler arquivo:', error)
+    reader.onerror = () => {
       toast.error("Erro ao processar a imagem selecionada.")
     }
     reader.readAsDataURL(file)
@@ -169,14 +150,6 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
     onOpenChange(isOpen)
   }
 
-  // Log de debug
-  console.log('🔍 Estado do CheckinModal:', {
-    imageToCrop: !!imageToCrop,
-    imageToCropLength: imageToCrop.length,
-    finalPhoto: !!finalPhoto,
-    open
-  })
-
   if (!activeGroup) {
     return null
   }
@@ -185,7 +158,6 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
     <>
       {imageToCrop && (
         <ImageCropper
-          key={imageToCrop.length} // Force re-render when image changes
           imageToCrop={imageToCrop}
           onConfirm={handleCropConfirm}
           onCancel={handleCropCancel}
