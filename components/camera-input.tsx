@@ -3,9 +3,10 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Camera, Upload, RotateCcw, Check, X } from "lucide-react"
+import { Camera, Upload, RotateCcw, Check, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import imageCompression from "browser-image-compression"
 
 interface CameraInputProps {
   onPhotoCapture: (file: File) => void
@@ -25,10 +26,34 @@ export function CameraInput({
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
   const [isVideoReady, setIsVideoReady] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleCompression = async (file: File): Promise<File | null> => {
+    const options = {
+      maxSizeMB: 2,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      onProgress: (p: number) => {
+        console.log(`Compressing: ${p}%`);
+        toast.loading(`Comprimindo imagem: ${p}%`, { id: "compress-toast" });
+      },
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      toast.dismiss("compress-toast");
+      return compressedFile;
+    } catch (error) {
+      toast.dismiss("compress-toast");
+      console.error('Erro na compressão:', error);
+      toast.error('Não foi possível comprimir a imagem. Tente uma imagem menor.');
+      return null;
+    }
+  }
 
   const startCamera = useCallback(async (mode: 'environment' | 'user') => {
     try {
@@ -39,7 +64,6 @@ export function CameraInput({
       const constraints = {
         video: { 
           facingMode: { ideal: mode },
-          // Prioriza a proporção 4:3, mais comum em câmeras de celular
           aspectRatio: { ideal: 4 / 3 }
         }
       }
@@ -132,33 +156,40 @@ export function CameraInput({
     setCapturedPhoto(dataURL)
   }
 
-  const confirmPhoto = () => {
+  const confirmPhoto = async () => {
     if (!capturedPhoto) return
+    setIsProcessing(true);
 
-    // Converter dataURL para blob usando fetch
-    fetch(capturedPhoto)
-      .then(res => res.blob())
-      .then(blob => {
-        const file = new File([blob], `checkin-${Date.now()}.jpg`, {
-          type: 'image/jpeg'
-        })
-        onPhotoCapture(file)
-        stopCamera()
-      })
-      .catch(error => {
-        console.error('Erro ao converter foto:', error)
-        toast.error('Erro ao processar a foto. Tente novamente.')
-      })
+    try {
+      const blob = await fetch(capturedPhoto).then(res => res.blob());
+      const file = new File([blob], `checkin-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      
+      const compressedFile = await handleCompression(file);
+      if (compressedFile) {
+        onPhotoCapture(compressedFile);
+        stopCamera();
+      }
+    } catch (error) {
+      console.error('Erro ao converter foto:', error);
+      toast.error('Erro ao processar a foto. Tente novamente.');
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   const retakePhoto = () => {
     setCapturedPhoto(null)
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
-      onPhotoCapture(file)
+      setIsProcessing(true);
+      const compressedFile = await handleCompression(file);
+      if (compressedFile) {
+        onPhotoCapture(compressedFile);
+      }
+      setIsProcessing(false);
     } else if (file) {
       toast.error("Por favor, selecione um arquivo de imagem válido.")
     }
@@ -246,6 +277,7 @@ export function CameraInput({
                 variant="ghost"
                 size="lg"
                 className="text-white hover:bg-white/20 rounded-full w-16 h-16"
+                disabled={isProcessing}
               >
                 <RotateCcw className="h-6 w-6" />
               </Button>
@@ -253,8 +285,9 @@ export function CameraInput({
                 onClick={confirmPhoto}
                 size="lg"
                 className="rounded-full w-20 h-20 bg-green-500 hover:bg-green-600 ring-4 ring-green-500/30"
+                disabled={isProcessing}
               >
-                <Check className="h-8 w-8 text-white" />
+                {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : <Check className="h-8 w-8 text-white" />}
               </Button>
               <div className="w-16" /> {/* Spacer */}
             </>
@@ -272,7 +305,7 @@ export function CameraInput({
         accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
-        disabled={disabled}
+        disabled={disabled || isProcessing}
       />
 
       <div className="grid grid-cols-2 gap-3">
@@ -280,9 +313,9 @@ export function CameraInput({
           onClick={handleCameraOpen}
           variant="outline"
           className="glass hover:bg-white/10 h-16 flex-col space-y-2 bg-transparent"
-          disabled={disabled}
+          disabled={disabled || isProcessing}
         >
-          <Camera className="h-6 w-6" />
+          {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
           <span className="text-sm">Câmera</span>
         </Button>
 
@@ -290,9 +323,9 @@ export function CameraInput({
           onClick={openGallery}
           variant="outline"
           className="glass hover:bg-white/10 h-16 flex-col space-y-2 bg-transparent"
-          disabled={disabled}
+          disabled={disabled || isProcessing}
         >
-          <Upload className="h-6 w-6" />
+          {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
           <span className="text-sm">Galeria</span>
         </Button>
       </div>

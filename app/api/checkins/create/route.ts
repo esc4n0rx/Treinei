@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validar tamanho do arquivo (máximo 15MB)
-    if (foto.size > 15 * 1024 * 1024) {
+    // Validar tamanho do arquivo (máximo 5MB) - Reduzido pois a imagem já vem comprimida
+    if (foto.size > 5 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, error: 'Imagem muito grande. Máximo 15MB' },
+        { success: false, error: 'Imagem muito grande. Máximo 5MB' },
         { status: 400 }
       )
     }

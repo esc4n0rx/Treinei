@@ -129,11 +129,11 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
       folder: 'treinei/checkins',
       public_id: `checkin_${userId}_${grupo_id}_${Date.now()}`,
       transformation: {
-        width: 1080,
-        height: 1350,
-        crop: 'limit',
+        // A compressão principal já foi feita no cliente.
+        // Aqui apenas garantimos a padronização e otimização final.
+        width: 1200, 
         quality: 'auto:good',
-        format: 'webp' // Converte para WebP para máxima compressão
+        fetch_format: 'auto' // Converte para WebP/AVIF se o navegador suportar
       }
     })
     
