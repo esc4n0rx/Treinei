@@ -11,7 +11,7 @@ const STATIC_RESOURCES = [
   '/ranking',
   '/profile',
   '/offline.html',
-  '/notification.png' // Adicionar o ícone ao cache
+  '/notification.png'
 ];
 
 // Install event - cache resources
@@ -59,7 +59,14 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) {
+  // Ignora requisições que não são GET, de outras origens ou para a API/Firebase
+  if (
+    request.method !== 'GET' || 
+    url.origin !== location.origin || 
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis')
+  ) {
     return;
   }
 
@@ -94,61 +101,5 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// *** NOVO: Push event listener ***
-self.addEventListener('push', (event) => {
-  console.log('Push recebido:', event);
-
-  let payload = {
-    title: 'Nova Notificação',
-    body: 'Você tem uma nova mensagem.',
-    icon: '/notification.png',
-    url: '/'
-  };
-
-  if (event.data) {
-    try {
-      payload = event.data.json();
-    } catch (e) {
-      console.error('Erro ao parsear payload do push:', e);
-    }
-  }
-
-  const options = {
-    body: payload.body,
-    icon: payload.icon,
-    badge: '/notification.png', // Ícone para a barra de status do Android
-    vibrate: [100, 50, 100], // Vibração [vibra, pausa, vibra]
-    data: {
-      url: payload.url,
-    },
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(payload.title, options)
-  );
-});
-
-// *** NOVO: Notification click event listener ***
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const urlToOpen = event.notification.data.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true,
-    }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-          }
-        }
-        client.navigate(urlToOpen);
-        return client.focus();
-      }
-      return clients.openWindow(urlToOpen);
-    })
-  );
-});
+// REMOVIDO: Push e notificationclick events.
+// Eles agora serão gerenciados pelo firebase-messaging-sw.js.

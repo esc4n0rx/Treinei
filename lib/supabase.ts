@@ -1,3 +1,4 @@
+// lib/supabase.ts
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -42,4 +43,12 @@ export interface DatabaseGroupMember {
   papel: 'administrador' | 'membro'
   data_entrada: string
   status: 'ativo' | 'inativo'
+}
+
+// NOVO: Tipo para a tabela de inscrições push
+export interface PushSubscription {
+  id: number
+  user_id: string
+  fcm_token: string // Apenas o token FCM
+  created_at: string
 }

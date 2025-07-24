@@ -7,3 +7,7 @@ export interface PushSubscriptionObject {
       auth: string;
     };
   }
+
+export interface PushSubscriptionData {
+  fcm_token: string;
+}
