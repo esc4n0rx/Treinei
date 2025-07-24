@@ -1,6 +1,7 @@
+// components/manage-group-content.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,90 +11,127 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Users, Trash2, UserMinus, Crown, Shield, Camera, Save, AlertTriangle } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { ArrowLeft, Users, Trash2, UserMinus, Crown, Shield, Camera, Save, AlertTriangle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Group, GroupMember } from "@/types/group"
+import { fetchGroupById, updateGroupApi, removeMemberApi, updateMemberRoleApi } from "@/lib/api/groups"
+import { useAuth } from "@/hooks/useAuth"
+import { toast } from "sonner"
 
-// Mock data
-const groupData = {
-  id: "1",
-  name: "Academia Central",
-  description: "Grupo da academia do centro da cidade",
-  avatar: "/placeholder.svg?height=80&width=80",
-  isPrivate: false,
-  maxMembers: 50,
-  weeklyGoal: 5,
-}
-
-const groupMembers = [
-  {
-    id: "1",
-    name: "João Silva",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "owner",
-    joinedAt: "Janeiro 2024",
-  },
-  {
-    id: "2",
-    name: "Maria Santos",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "admin",
-    joinedAt: "Janeiro 2024",
-  },
-  {
-    id: "3",
-    name: "Pedro Costa",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "member",
-    joinedAt: "Fevereiro 2024",
-  },
-  {
-    id: "4",
-    name: "Ana Lima",
-    avatar: "/placeholder.svg?height=40&width=40",
-    role: "member",
-    joinedAt: "Fevereiro 2024",
-  },
-]
 
 export function ManageGroupContent({ id }: { id: string }) {
   const router = useRouter()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState("settings")
-  const [formData, setFormData] = useState(groupData)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [group, setGroup] = useState<Group | null>(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    isPrivate: false,
+    maxMembers: 50,
+    weeklyGoal: 5,
+  })
+  const [members, setMembers] = useState<GroupMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null)
+  const [confirmDeleteText, setConfirmDeleteText] = useState("")
 
-  const handleSave = () => {
-    // Aqui você salvaria as alterações
-    console.log("Salvando alterações:", formData)
+  useEffect(() => {
+    const loadGroup = async () => {
+      setLoading(true)
+      const result = await fetchGroupById(id)
+      if (result.success && result.group) {
+        setGroup(result.group)
+        setFormData({
+          name: result.group.nome,
+          description: result.group.descricao || "",
+          isPrivate: result.group.tipo === 'privado',
+          maxMembers: result.group.max_membros || 50,
+          weeklyGoal: 5, // Placeholder for now
+        })
+        setMembers(result.group.membros || [])
+      } else {
+        toast.error("Falha ao carregar dados do grupo.")
+        router.push("/groups")
+      }
+      setLoading(false)
+    }
+    loadGroup()
+  }, [id, router])
+
+  const handleSave = async () => {
+  setIsSaving(true)
+  const result = await updateGroupApi(id, {
+    nome: formData.name,
+    descricao: formData.description,
+    isPrivate: formData.isPrivate,
+    max_membros: formData.maxMembers,
+  })
+  if (result.success) {
+    toast.success("Grupo atualizado com sucesso!")
+    setGroup(prev => prev ? { ...prev, ...result.group } : result.group ?? null)
+  } else {
+    toast.error(result.error || "Falha ao salvar alterações.")
   }
+  setIsSaving(false)
+}
 
   const handleDeleteGroup = () => {
-    // Aqui você deletaria o grupo
     console.log("Deletando grupo:", id)
+    toast.info("Funcionalidade de deletar grupo em desenvolvimento.")
     router.push("/groups")
   }
 
-  const handleRemoveMember = (memberId: string) => {
-    console.log("Removendo membro:", memberId)
+  const handleRemoveMember = async (memberId: string) => {
+    setDeletingMemberId(memberId);
+    const result = await removeMemberApi(id, memberId)
+    if (result.success) {
+      toast.success("Membro removido com sucesso!")
+      setMembers(prev => prev.filter(m => m.usuario_id !== memberId))
+    } else {
+      toast.error(result.error || "Falha ao remover membro.")
+    }
+    setDeletingMemberId(null);
   }
 
-  const handlePromoteMember = (memberId: string) => {
-    console.log("Promovendo membro:", memberId)
+  const handleToggleAdmin = async (member: GroupMember) => {
+    const newRole = member.papel === 'administrador' ? 'membro' : 'administrador'
+    const result = await updateMemberRoleApi(id, member.usuario_id, { role: newRole })
+
+    if (result.success) {
+      toast.success(`Cargo de ${member.usuario?.nome} atualizado para ${newRole}.`)
+      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, papel: newRole } : m))
+    } else {
+      toast.error(result.error || 'Falha ao alterar cargo.')
+    }
   }
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case "owner":
-        return <Crown className="h-4 w-4 text-yellow-500" />
-      case "admin":
-        return <Shield className="h-4 w-4 text-blue-500" />
-      default:
-        return null
+      case "administrador": return <Crown className="h-4 w-4 text-yellow-500" />
+      default: return null
     }
   }
 
+  if (loading) {
+    return <div className="p-4 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>
+  }
+
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 pb-20">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -108,9 +146,9 @@ export function ManageGroupContent({ id }: { id: string }) {
           <h1 className="text-2xl font-bold">Gerenciar Grupo</h1>
           <p className="text-muted-foreground">{formData.name}</p>
         </div>
-        <Button onClick={handleSave} className="glass hover:bg-white/20">
-          <Save className="h-4 w-4 mr-2" />
-          Salvar
+        <Button onClick={handleSave} className="glass hover:bg-white/20" disabled={isSaving}>
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+          {isSaving ? "" : "Salvar"}
         </Button>
       </motion.div>
 
@@ -118,7 +156,7 @@ export function ManageGroupContent({ id }: { id: string }) {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 glass">
             <TabsTrigger value="settings">Configurações</TabsTrigger>
-            <TabsTrigger value="members">Membros</TabsTrigger>
+            <TabsTrigger value="members">Membros ({members.length})</TabsTrigger>
             <TabsTrigger value="danger">Zona Perigosa</TabsTrigger>
           </TabsList>
 
@@ -131,12 +169,9 @@ export function ManageGroupContent({ id }: { id: string }) {
               <CardContent className="space-y-4">
                 <div className="flex flex-col items-center space-y-4">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={formData.avatar || "/placeholder.svg"} />
+                    <AvatarImage src={group?.logo_url || "/placeholder.svg"} />
                     <AvatarFallback className="text-2xl">
-                      {formData.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+                      {formData.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
                   <Button variant="outline" size="sm" className="glass hover:bg-white/10 bg-transparent">
@@ -147,22 +182,12 @@ export function ManageGroupContent({ id }: { id: string }) {
 
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Grupo</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                    className="glass"
-                  />
+                  <Input id="name" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} className="glass" />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                    className="glass min-h-[100px]"
-                  />
+                  <Textarea id="description" value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} className="glass min-h-[100px]" />
                 </div>
               </CardContent>
             </Card>
@@ -178,37 +203,11 @@ export function ManageGroupContent({ id }: { id: string }) {
                     <Label htmlFor="privacy">Grupo Privado</Label>
                     <p className="text-sm text-muted-foreground">Apenas membros convidados podem entrar</p>
                   </div>
-                  <Switch
-                    id="privacy"
-                    checked={formData.isPrivate}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPrivate: checked }))}
-                  />
+                  <Switch id="privacy" checked={formData.isPrivate} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isPrivate: checked }))} />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="maxMembers">Limite de Membros</Label>
-                  <Input
-                    id="maxMembers"
-                    type="number"
-                    value={formData.maxMembers}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, maxMembers: Number.parseInt(e.target.value) }))}
-                    className="glass"
-                    min="2"
-                    max="1000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weeklyGoal">Meta Semanal (check-ins por membro)</Label>
-                  <Input
-                    id="weeklyGoal"
-                    type="number"
-                    value={formData.weeklyGoal}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, weeklyGoal: Number.parseInt(e.target.value) }))}
-                    className="glass"
-                    min="1"
-                    max="14"
-                  />
+                  <Input id="maxMembers" type="number" value={formData.maxMembers} onChange={(e) => setFormData((prev) => ({ ...prev, maxMembers: Number.parseInt(e.target.value, 10) }))} className="glass" min="2" max="1000" />
                 </div>
               </CardContent>
             </Card>
@@ -225,47 +224,52 @@ export function ManageGroupContent({ id }: { id: string }) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {groupMembers.map((member) => (
+                  {members.map((member) => (
                     <div key={member.id} className="flex items-center space-x-4 p-3 rounded-lg glass">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={member.avatar || "/placeholder.svg"} />
+                        <AvatarImage src={member.usuario?.avatar_url || "/placeholder.svg"} />
                         <AvatarFallback>
-                          {member.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                          {member.usuario?.nome.split(" ").map((n) => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>
 
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
-                          <p className="font-medium">{member.name}</p>
-                          {getRoleIcon(member.role)}
+                          <p className="font-medium">{member.usuario?.nome}</p>
+                          {getRoleIcon(member.papel)}
                         </div>
-                        <p className="text-sm text-muted-foreground">Desde {member.joinedAt}</p>
+                        <p className="text-sm text-muted-foreground">Desde {new Date(member.data_entrada).toLocaleDateString('pt-BR')}</p>
                       </div>
 
-                      {member.role !== "owner" && (
+                      {member.usuario_id !== user?.id && (
                         <div className="flex space-x-2">
-                          {member.role === "member" && (
-                            <Button
-                              onClick={() => handlePromoteMember(member.id)}
-                              variant="outline"
-                              size="sm"
-                              className="glass hover:bg-white/10"
-                            >
-                              <Shield className="h-3 w-3 mr-1" />
-                              Promover
-                            </Button>
-                          )}
                           <Button
-                            onClick={() => handleRemoveMember(member.id)}
-                            variant="outline"
-                            size="sm"
-                            className="glass hover:bg-red-500/20 text-red-500"
-                          >
-                            <UserMinus className="h-3 w-3" />
+                            onClick={() => handleToggleAdmin(member)}
+                            variant="outline" size="sm" className="glass hover:bg-white/10">
+                            <Shield className="h-3 w-3 mr-1" />
+                            {member.papel === 'administrador' ? 'Rebaixar' : 'Promover'}
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="icon" className="glass hover:bg-red-500/20 text-red-500 w-9 h-9">
+                                <UserMinus className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remover {member.usuario?.nome}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação não pode ser desfeita. O usuário será removido permanentemente do grupo.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRemoveMember(member.usuario_id)} disabled={deletingMemberId === member.usuario_id}>
+                                  {deletingMemberId === member.usuario_id ? <Loader2 className="h-4 w-4 animate-spin"/> : "Confirmar"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       )}
                     </div>
@@ -278,56 +282,33 @@ export function ManageGroupContent({ id }: { id: string }) {
           <TabsContent value="danger" className="space-y-6 mt-6">
             <Card className="glass-card border-red-500/20">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-red-500">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>Zona Perigosa</span>
-                </CardTitle>
+                <CardTitle className="flex items-center space-x-2 text-red-500"><AlertTriangle className="h-5 w-5" /><span>Zona Perigosa</span></CardTitle>
                 <CardDescription>Ações irreversíveis que afetam permanentemente o grupo</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <h4 className="font-semibold text-red-500 mb-2">Deletar Grupo</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Esta ação não pode ser desfeita. Todos os dados do grupo, incluindo check-ins e histórico, serão
-                    permanentemente removidos.
-                  </p>
-
-                  {!showDeleteConfirm ? (
-                    <Button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      variant="destructive"
-                      className="glass hover:bg-red-500/20"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Deletar Grupo
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="glass hover:bg-red-500/20">
+                      <Trash2 className="h-4 w-4 mr-2" /> Deletar Grupo
                     </Button>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-red-500">
-                        Tem certeza? Digite o nome do grupo para confirmar:
-                      </p>
-                      <Input placeholder={formData.name} className="glass border-red-500/50" />
-                      <div className="flex space-x-2">
-                        <Button
-                          onClick={() => setShowDeleteConfirm(false)}
-                          variant="outline"
-                          size="sm"
-                          className="glass hover:bg-white/10"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          onClick={handleDeleteGroup}
-                          variant="destructive"
-                          size="sm"
-                          className="glass hover:bg-red-500/20"
-                        >
-                          Confirmar Exclusão
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação é irreversível. Todos os dados do grupo serão perdidos.
+                        Para confirmar, digite <strong>{group?.nome}</strong> abaixo.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input placeholder={group?.nome} className="glass border-red-500/50" value={confirmDeleteText} onChange={(e) => setConfirmDeleteText(e.target.value)} />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteGroup} disabled={confirmDeleteText !== group?.nome}>
+                        Confirmar Exclusão
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </TabsContent>

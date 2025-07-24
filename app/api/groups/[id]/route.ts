@@ -4,7 +4,7 @@ import { getGroupById } from '@/lib/supabase/groups'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('Authorization')
@@ -21,7 +21,9 @@ export async function GET(
       }
     }
 
-    const result = await getGroupById(params.id, userId)
+    // Aguardar o params antes de usar
+    const { id } = await params
+    const result = await getGroupById(id, userId)
 
     if (result.success) {
       return NextResponse.json(result)

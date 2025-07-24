@@ -1,6 +1,6 @@
 // lib/supabase/groups.ts
 import { supabase } from '../supabase'
-import { Group, GroupMember, CreateGroupData, JoinGroupData } from '@/types/group'
+import { Group, GroupMember, CreateGroupData, JoinGroupData, UpdateGroupData } from '@/types/group'
 import { hashPassword, verifyPassword } from '../auth'
 import { uploadToCloudinary } from '../cloudinary' // Import direto
 
@@ -29,7 +29,8 @@ export async function getUserGroups(userId: string) {
             id,
             nome,
             avatar_url
-          )
+          ),
+          _count:treinei_grupos_membros!grupo_id(count)
         )
       `)
       .eq('usuario_id', userId)
@@ -41,11 +42,17 @@ export async function getUserGroups(userId: string) {
       return { success: false, error: 'Erro ao carregar grupos' }
     }
 
-    const groups = data?.map(item => ({
-      ...item.grupo,
-      userRole: item.papel,
-      joinedAt: item.data_entrada
-    })) || []
+    const groups = data?.map(item => {
+      const grupo = item.grupo as any; // Cast para any para acessar _count
+      return {
+        ...grupo,
+        _count: {
+            membros: grupo?._count?.[0]?.count || 0
+        },
+        userRole: item.papel,
+        joinedAt: item.data_entrada
+      }
+    }) || []
 
     return { success: true, groups }
   } catch (error) {
@@ -92,7 +99,17 @@ export async function getPublicGroups(searchQuery?: string, limit = 20) {
       return { success: false, error: 'Erro ao carregar grupos' }
     }
 
-    return { success: true, groups: data || [] }
+    const transformedGroups = data?.map(group => {
+      const g = group as any;
+      return {
+        ...g,
+        _count: {
+            membros: g._count?.[0]?.count || 0
+        }
+      }
+    }) || []
+
+    return { success: true, groups: transformedGroups }
   } catch (error) {
     console.error('Erro ao buscar grupos públicos:', error)
     return { success: false, error: 'Erro interno' }
@@ -344,6 +361,7 @@ export async function getGroupById(groupId: string, userId?: string) {
           papel,
           data_entrada,
           status,
+          usuario_id,
           usuario:treinei_usuarios!usuario_id(
             id,
             nome,
@@ -363,7 +381,7 @@ export async function getGroupById(groupId: string, userId?: string) {
     // Se userId fornecido, verificar se é membro
     let userMembership = null
     if (userId) {
-      const membershipData = data.membros?.find(m => m.usuario && 'id' in m.usuario && m.usuario.id === userId && m.status === 'ativo')
+      const membershipData = data.membros?.find((m: any) => m.usuario && 'id' in m.usuario && m.usuario.id === userId && m.status === 'ativo')
       if (membershipData) {
         userMembership = {
           role: membershipData.papel,
@@ -375,7 +393,7 @@ export async function getGroupById(groupId: string, userId?: string) {
     const group = {
       ...data,
       userMembership,
-      membros: data.membros?.filter(m => m.status === 'ativo') || []
+      membros: data.membros?.filter((m: any) => m.status === 'ativo') || []
     }
 
     return { success: true, group }
@@ -383,4 +401,69 @@ export async function getGroupById(groupId: string, userId?: string) {
     console.error('Erro ao buscar grupo:', error)
     return { success: false, error: 'Erro interno' }
   }
+}
+
+
+/**
+ * Atualiza os dados de um grupo
+ */
+export async function updateGroup(groupId: string, data: UpdateGroupData) {
+  const { nome, descricao, isPrivate, max_membros } = data;
+  
+  const { data: updatedData, error } = await supabase
+    .from('treinei_grupos')
+    .update({
+      nome,
+      descricao,
+      tipo: isPrivate ? 'privado' : 'publico',
+      max_membros,
+    })
+    .eq('id', groupId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao atualizar grupo:', error);
+    return { success: false, error: 'Não foi possível atualizar o grupo.' };
+  }
+
+  return { success: true, group: updatedData };
+}
+
+/**
+ * Remove um membro de um grupo
+ */
+export async function removeGroupMember(groupId: string, memberUserId: string) {
+  const { error } = await supabase
+    .from('treinei_grupos_membros')
+    .delete()
+    .eq('grupo_id', groupId)
+    .eq('usuario_id', memberUserId);
+
+  if (error) {
+    console.error('Erro ao remover membro:', error);
+    return { success: false, error: 'Não foi possível remover o membro.' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Altera o cargo de um membro
+ */
+export async function updateMemberRole(groupId: string, memberUserId: string, role: 'administrador' | 'membro') {
+  const { data, error } = await supabase
+    .from('treinei_grupos_membros')
+    .update({ papel: role })
+    .eq('grupo_id', groupId)
+    .eq('usuario_id', memberUserId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao alterar cargo do membro:', error);
+    return { success: false, error: 'Não foi possível alterar o cargo do membro.' };
+  }
+
+  return { success: true, member: data };
 }

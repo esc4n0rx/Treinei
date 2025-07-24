@@ -1,4 +1,5 @@
-import { CreateGroupData, JoinGroupData, GroupsResponse, GroupResponse, CreateGroupResponse, JoinGroupResponse } from '@/types/group'
+// lib/api/groups.ts
+import { CreateGroupData, JoinGroupData, GroupsResponse, GroupResponse, CreateGroupResponse, JoinGroupResponse, UpdateGroupData, UpdateMemberRoleData } from '@/types/group'
 
 const API_BASE = '/api/groups'
 
@@ -117,5 +118,68 @@ export async function fetchGroupById(groupId: string): Promise<GroupResponse> {
   } catch (error) {
     console.error('Erro ao buscar grupo:', error)
     return { success: false, error: 'Erro de conexão' }
+  }
+}
+
+/**
+ * Atualiza um grupo
+ */
+export async function updateGroupApi(groupId: string, data: UpdateGroupData): Promise<GroupResponse> {
+  try {
+    const token = localStorage.getItem('treinei_token');
+    const response = await fetch(`${API_BASE}/${groupId}/manage`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Erro ao atualizar grupo:', error);
+    return { success: false, error: 'Erro de conexão' };
+  }
+}
+
+/**
+ * Remove um membro do grupo
+ */
+export async function removeMemberApi(groupId: string, memberUserId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const token = localStorage.getItem('treinei_token');
+    const response = await fetch(`${API_BASE}/${groupId}/members`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ memberUserId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Erro ao remover membro:', error);
+    return { success: false, error: 'Erro de conexão' };
+  }
+}
+
+/**
+ * Atualiza o cargo de um membro
+ */
+export async function updateMemberRoleApi(groupId: string, memberUserId: string, data: UpdateMemberRoleData): Promise<{ success: boolean, error?: string }> {
+  try {
+    const token = localStorage.getItem('treinei_token');
+    const response = await fetch(`${API_BASE}/${groupId}/members`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ memberUserId, ...data }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Erro ao atualizar cargo do membro:', error);
+    return { success: false, error: 'Erro de conexão' };
   }
 }

@@ -1,11 +1,13 @@
 "use client"
 
+import { use } from "react"
 import { GroupDetailsContent } from "@/components/group-details-content"
 
 interface GroupDetailsPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default function GroupDetailsPage({ params }: GroupDetailsPageProps) {
-  return <GroupDetailsContent id={params.id} />
+  const { id } = use(params)
+  return <GroupDetailsContent id={id} />
 }

@@ -36,6 +36,7 @@ export interface GroupMember {
     nome: string
     avatar_url: string | null
   }
+  usuario_id: string
 }
 
 export interface CreateGroupData {
@@ -45,6 +46,18 @@ export interface CreateGroupData {
   senha?: string
   max_membros?: number
   logo?: File
+}
+
+export interface UpdateGroupData {
+  nome?: string
+  descricao?: string
+  isPrivate?: boolean
+  max_membros?: number
+  weekly_goal?: number
+}
+
+export interface UpdateMemberRoleData {
+  role: 'administrador' | 'membro'
 }
 
 export interface JoinGroupData {

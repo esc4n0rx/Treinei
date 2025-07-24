@@ -8,23 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Trophy, Settings, UserPlus, Crown, Clock, Loader2 } from "lucide-react"
+import { ArrowLeft, Trophy, Settings, Users, Crown, Clock, Loader2, Info } from "lucide-react"
 import { fetchGroupById } from "@/lib/api/groups"
 import { Group } from "@/types/group"
 import Link from "next/link"
-
-const recentActivity = [
-  { id: "1", user: "Maria Santos", action: "fez check-in", time: "2h atrás", type: "checkin" },
-  { id: "2", user: "Pedro Costa", action: "entrou no grupo", time: "1 dia atrás", type: "join" },
-  { id: "3", user: "João Silva", action: "fez check-in", time: "1 dia atrás", type: "checkin" },
-  { id: "4", user: "Ana Lima", action: "fez check-in", time: "2 dias atrás", type: "checkin" },
-]
+import { useAuth } from "@/hooks/useAuth"
 
 export function GroupDetailsContent({ id }: { id: string }) {
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState("members")
   const [group, setGroup] = useState<Group | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadGroup = async () => {
@@ -47,30 +42,12 @@ export function GroupDetailsContent({ id }: { id: string }) {
     loadGroup()
   }, [id])
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "administrador":
-      case "owner":
-        return <Crown className="h-4 w-4 text-yellow-500" />
-      case "admin":
-        return <Settings className="h-4 w-4 text-blue-500" />
-      default:
-        return null
-    }
-  }
-
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "administrador":
-      case "owner":
         return (
-          <Badge variant="secondary" className="glass text-xs">
-            Administrador
-          </Badge>
-        )
-      case "admin":
-        return (
-          <Badge variant="secondary" className="glass text-xs">
+          <Badge variant="secondary" className="glass text-xs bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+            <Crown className="h-3 w-3 mr-1" />
             Admin
           </Badge>
         )
@@ -103,11 +80,11 @@ export function GroupDetailsContent({ id }: { id: string }) {
     )
   }
 
-  const isOwner = group.userMembership?.role === 'administrador'
+  const isOwner = user?.id === group.administrador?.id;
   const membersCount = group.membros?.length || 0
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 pb-20">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -119,7 +96,7 @@ export function GroupDetailsContent({ id }: { id: string }) {
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{group.nome}</h1>
+          <h1 className="text-2xl font-bold truncate">{group.nome}</h1>
           <p className="text-muted-foreground">Detalhes do grupo</p>
         </div>
         {isOwner && (
@@ -135,7 +112,7 @@ export function GroupDetailsContent({ id }: { id: string }) {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Card className="glass-card">
           <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
+            <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={group.logo_url || "/placeholder.svg"} />
                 <AvatarFallback className="text-2xl">
@@ -158,24 +135,9 @@ export function GroupDetailsContent({ id }: { id: string }) {
                   </Badge>
                   {group.max_membros && (
                     <Badge variant="outline" className="glass">
-                      Limite: {group.max_membros}
+                      {membersCount} / {group.max_membros} membros
                     </Badge>
                   )}
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold text-primary">{membersCount}</p>
-                    <p className="text-xs text-muted-foreground">Membros</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-green-500">--</p>
-                    <p className="text-xs text-muted-foreground">Check-ins/semana</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-purple-500">--</p>
-                    <p className="text-xs text-muted-foreground">Meta semanal</p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -185,148 +147,77 @@ export function GroupDetailsContent({ id }: { id: string }) {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 glass">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="members">Membros</TabsTrigger>
-            <TabsTrigger value="activity">Atividade</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 glass">
+            <TabsTrigger value="members">Membros ({membersCount})</TabsTrigger>
+            <TabsTrigger value="info">Informações</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4 mt-6">
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Trophy className="h-5 w-5" />
-                  <span>Estatísticas da Semana</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Progresso da Meta</span>
-                    <span className="text-sm font-medium">-- / --</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '0%' }} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Funcionalidade em desenvolvimento
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="members" className="space-y-4 mt-6">
+            <div className="space-y-3">
+              {group.membros?.sort((a,b) => a.papel === 'administrador' ? -1 : 1).map((member, index) => (
+                <motion.div
+                  key={member.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <Card className="glass-card">
+                    <CardContent className="p-3">
+                      <div className="flex items-center space-x-3">
+                        <Link href={`/users/${member.usuario_id}`}>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={member.usuario?.avatar_url || "/placeholder.svg"} />
+                            <AvatarFallback>
+                              {member.usuario?.nome
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <Link href={`/users/${member.usuario_id}`} className="font-medium text-sm hover:underline">{member.usuario?.nome}</Link>
+                            {getRoleBadge(member.papel)}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Na equipe desde {new Date(member.data_entrada).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </TabsContent>
 
-            <Card className="glass-card">
+          <TabsContent value="info" className="space-y-4 mt-6">
+             <Card className="glass-card">
               <CardHeader>
-                <CardTitle>Informações do Grupo</CardTitle>
+                <CardTitle className="flex items-center space-x-2"><Info className="h-5 w-5" /><span>Sobre o Grupo</span></CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Administrador:</span>
+                  <span className="font-medium">{group.administrador?.nome || 'Não definido'}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Criado em:</span>
                   <span>{new Date(group.data_criacao).toLocaleDateString('pt-BR')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tipo:</span>
-                  <span>{group.tipo === 'publico' ? 'Público' : 'Privado'}</span>
+                  <span className="capitalize">{group.tipo}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Seu papel:</span>
-                  <span>{isOwner ? 'Administrador' : 'Membro'}</span>
-                </div>
-                {group.max_membros && (
+                 {group.userMembership?.joinedAt && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Limite de membros:</span>
-                    <span>{group.max_membros}</span>
+                    <span className="text-muted-foreground">Você entrou em:</span>
+                    <span>{new Date(group.userMembership.joinedAt).toLocaleDateString('pt-BR')}</span>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="members" className="space-y-4 mt-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Membros ({membersCount})</h3>
-              {isOwner && (
-                <Button size="sm" className="glass hover:bg-white/20">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Convidar
-                </Button>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              {group.membros?.map((member, index) => (
-                <motion.div
-                  key={member.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card className="glass-card">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={member.usuario?.avatar_url || "/placeholder.svg"} />
-                          <AvatarFallback>
-                            {member.usuario?.nome
-                              ?.split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <p className="font-medium">{member.usuario?.nome}</p>
-                            {getRoleIcon(member.papel)}
-                            {getRoleBadge(member.papel)}
-                          </div>
-                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                            <span>-- check-ins esta semana</span>
-                            <span>Desde {new Date(member.data_entrada).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="activity" className="space-y-4 mt-6">
-            <h3 className="text-lg font-semibold">Atividade Recente</h3>
-
-            <div className="space-y-3">
-              {recentActivity.map((activity, index) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card className="glass-card">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            activity.type === "checkin" ? "bg-green-500" : "bg-blue-500"
-                          }`}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm">
-                            <span className="font-medium">{activity.user}</span> {activity.action}
-                          </p>
-                          <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{activity.time}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
           </TabsContent>
         </Tabs>
       </motion.div>
