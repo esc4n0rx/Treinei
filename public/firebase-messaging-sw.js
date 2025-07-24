@@ -1,23 +1,29 @@
 // public/firebase-messaging-sw.js
-import { initializeApp } from "firebase/app";
-import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
 
-// Cole suas credenciais do Firebase aqui.
-// É seguro expor essas chaves no lado do cliente.
+// Importe os scripts necessários do Firebase.
+// ATENÇÃO: Use a importação legada para compatibilidade máxima em service workers.
+importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js");
+
+//
+// ** IMPORTANTE: SUBSTITUA OS VALORES ABAIXO PELAS SUAS CREDENCIAIS DO FIREBASE **
+// (Você pode copiar e colar do seu arquivo .env.local)
+//
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyBDM2TVs1nMcDm3QH0OPom3jevk8RqJTxM",
+  authDomain: "treinei-242d8.firebaseapp.com",
+  projectId: "treinei-242d8",
+  storageBucket: "treinei-242d8.firebasestorage.app",
+  messagingSenderId: "601954634653",
+  appId: "1:601954634653:web:a6f03b90507cb4cec63d74",
 };
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+// Inicializa o Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
-onBackgroundMessage(messaging, (payload) => {
-  console.log("[firebase-messaging-sw.js] Received background message ", payload);
+messaging.onBackgroundMessage((payload) => {
+  console.log("[firebase-messaging-sw.js] Mensagem recebida em segundo plano: ", payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
@@ -25,7 +31,7 @@ onBackgroundMessage(messaging, (payload) => {
     icon: payload.notification.image || '/notification.png',
     badge: '/notification.png',
     data: {
-      url: payload.fcmOptions.link || '/'
+      url: payload.fcmOptions.link || '/' // O link vem da sua função da Supabase
     }
   };
 
@@ -42,17 +48,16 @@ self.addEventListener('notificationclick', (event) => {
       type: 'window',
       includeUncontrolled: true,
     }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-          }
+      // Se uma janela do app já estiver aberta, foque nela
+      for (const client of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
-        client.navigate(urlToOpen);
-        return client.focus();
       }
-      return clients.openWindow(urlToOpen);
+      // Se não, abra uma nova janela
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
     })
   );
 });
