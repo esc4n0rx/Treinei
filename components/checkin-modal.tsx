@@ -1,7 +1,7 @@
 // components/checkin-modal.tsx
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { motion } from "framer-motion"
 import dynamic from 'next/dynamic'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -16,11 +16,37 @@ import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import { toast } from "sonner"
 
-// Carrega o componente de recorte dinamicamente e apenas no lado do cliente
-const ImageCropper = dynamic(() => import('./image-cropper').then(mod => mod.ImageCropper), {
-  ssr: false,
-  loading: () => <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white"/></div>
-})
+// Carrega o componente de recorte dinamicamente com configuração mais robusta para produção
+const ImageCropper = dynamic(
+  () => import('./image-cropper').then(mod => {
+    console.log('✅ ImageCropper carregado com sucesso')
+    return mod.ImageCropper
+  }).catch((error) => {
+    console.error('❌ Erro ao carregar ImageCropper:', error)
+    // Retornar um componente de fallback em caso de erro
+    return () => (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+        <div className="bg-white/10 backdrop-blur-md p-6 rounded-lg text-white text-center">
+          <p>Erro ao carregar o editor de imagem</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Recarregar página
+          </Button>
+        </div>
+      </div>
+    )
+  }),
+  {
+    ssr: false,
+    loading: () => {
+      console.log('⏳ Carregando ImageCropper...')
+      return (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-white"/>
+        </div>
+      )
+    }
+  }
+)
 
 interface CheckinModalProps {
   open: boolean
@@ -49,30 +75,48 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => formatDateForInput(new Date()));
   const [imageToCrop, setImageToCrop] = useState<string>("")
+  const [cropperLoaded, setCropperLoaded] = useState(false)
 
-  const handleImageSelected = (file: File) => {
+  const handleImageSelected = useCallback((file: File) => {
+    console.log('🖼️ Imagem selecionada:', file.name, file.size)
+    
     const reader = new FileReader()
-    reader.onload = () => setImageToCrop(reader.result as string)
+    reader.onload = () => {
+      const result = reader.result as string
+      console.log('📸 Definindo imageToCrop, tamanho da string:', result.length)
+      setImageToCrop(result)
+      
+      // Dar um pequeno delay para garantir que o state foi atualizado
+      setTimeout(() => {
+        console.log('🎯 Estado do imageToCrop após update:', !!result)
+      }, 100)
+    }
+    reader.onerror = (error) => {
+      console.error('❌ Erro ao ler arquivo:', error)
+      toast.error("Erro ao processar a imagem selecionada.")
+    }
     reader.readAsDataURL(file)
-  }
+  }, [])
 
-  const handlePhotoRemove = () => {
+  const handlePhotoRemove = useCallback(() => {
     setFinalPhoto(null)
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
     }
-  }
+  }, [previewUrl])
 
-  const handleCropConfirm = (file: File) => {
+  const handleCropConfirm = useCallback((file: File) => {
+    console.log('✅ Crop confirmado:', file.name, file.size)
     setFinalPhoto(file)
     setPreviewUrl(URL.createObjectURL(file))
     setImageToCrop("")
-  }
+  }, [])
 
-  const handleCropCancel = () => {
+  const handleCropCancel = useCallback(() => {
+    console.log('❌ Crop cancelado')
     setImageToCrop("")
-  }
+  }, [])
 
   const filteredSuggestions = useMemo(() =>
     suggestedLocations.filter(loc => loc.toLowerCase().includes(local.toLowerCase())),
@@ -111,9 +155,19 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
       setLocal("")
       setSelectedDate(formatDateForInput(new Date()))
       setImageToCrop("")
+      setCropperLoaded(false)
     }
     onOpenChange(isOpen)
   }
+
+  // Log para debug
+  console.log('🔍 Estado atual:', {
+    imageToCrop: !!imageToCrop,
+    imageToCropLength: imageToCrop.length,
+    finalPhoto: !!finalPhoto,
+    open,
+    cropperLoaded
+  })
 
   if (!activeGroup) {
     return null
@@ -122,11 +176,13 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   return (
     <>
       {imageToCrop && (
-        <ImageCropper
-          imageToCrop={imageToCrop}
-          onConfirm={handleCropConfirm}
-          onCancel={handleCropCancel}
-        />
+        <div key="image-cropper">
+          <ImageCropper
+            imageToCrop={imageToCrop}
+            onConfirm={handleCropConfirm}
+            onCancel={handleCropCancel}
+          />
+        </div>
       )}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="glass-card max-w-md mx-4 max-h-[90vh] overflow-y-auto">
@@ -158,78 +214,109 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
             <div className="space-y-3">
               <Label className="text-sm font-medium">Foto do Treino *</Label>
               {!finalPhoto ? (
-                <CameraInput onImageSelected={handleImageSelected} disabled={isCreating} />
+                <CameraInput onImageSelected={handleImageSelected} />
               ) : (
                 <div className="relative">
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted">
-                    <img src={previewUrl || ""} alt="Preview do check-in" className="w-full h-full object-cover" />
-                  </div>
-                  <Button type="button" variant="destructive" size="sm" onClick={handlePhotoRemove} disabled={isCreating} className="absolute -top-2 -right-2 rounded-full w-8 h-8 p-0">
+                  <img 
+                    src={previewUrl || ""} 
+                    alt="Preview do treino" 
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handlePhotoRemove}
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               )}
             </div>
-            
-            <div className="space-y-2 relative">
-              <Label htmlFor="local" className="text-sm font-medium">Local do Treino</Label>
-              <div className="relative">
-                <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="local"
-                  value={local}
-                  onChange={(e) => {
-                    setLocal(e.target.value)
-                    setShowLocationSuggestions(e.target.value.length > 0)
-                  }}
-                  onFocus={() => setShowLocationSuggestions(local.length > 0)}
-                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
-                  placeholder="Ex: Academia, Parque, Casa..."
-                  className="pl-10 glass"
-                  disabled={isCreating}
-                  maxLength={50}
-                />
-              </div>
-              
+
+            <div className="space-y-3">
+              <Label htmlFor="observacao" className="text-sm font-medium">Observação (opcional)</Label>
+              <Textarea
+                id="observacao"
+                placeholder="Como foi seu treino? Compartilhe seus pensamentos..."
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                className="glass bg-transparent resize-none"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-3 relative">
+              <Label htmlFor="local" className="text-sm font-medium">Local (opcional)</Label>
+              <Input
+                id="local"
+                placeholder="Onde você treinou?"
+                value={local}
+                onChange={(e) => {
+                  setLocal(e.target.value)
+                  setShowLocationSuggestions(e.target.value.length > 0)
+                }}
+                onFocus={() => setShowLocationSuggestions(local.length > 0)}
+                onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
+                className="glass bg-transparent"
+              />
+
               {showLocationSuggestions && filteredSuggestions.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="absolute top-full left-0 right-0 z-10 mt-1 bg-background/95 backdrop-blur-md border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute z-10 w-full bg-black/80 backdrop-blur-md border border-white/20 rounded-lg mt-1 max-h-48 overflow-y-auto"
+                >
                   {filteredSuggestions.map((suggestion) => (
-                    <button key={suggestion} type="button" onClick={() => { setLocal(suggestion); setShowLocationSuggestions(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg">
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span>{suggestion}</span>
-                      </div>
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => {
+                        setLocal(suggestion)
+                        setShowLocationSuggestions(false)
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center space-x-2"
+                    >
+                      <Building className="h-4 w-4" />
+                      <span>{suggestion}</span>
                     </button>
                   ))}
                 </motion.div>
               )}
-              
-              <p className="text-xs text-muted-foreground">Opcional • {local.length}/50 caracteres</p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="datetime" className="text-sm font-medium">Data e Hora</Label>
               <div className="relative">
-                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input id="datetime" type="datetime-local" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="pl-10 glass" disabled={isCreating} max={formatDateForInput(new Date())} />
+                <Input
+                  id="datetime"
+                  type="datetime-local"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="glass bg-transparent"
+                />
+                <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">Seu fuso horário local será usado.</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="observacao" className="text-sm font-medium">Observação (opcional)</Label>
-              <Textarea id="observacao" value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Como foi seu treino hoje? Que exercícios fez?" className="glass min-h-[80px] resize-none" maxLength={500} disabled={isCreating} />
-              <p className="text-xs text-muted-foreground">{observacao.length}/500 caracteres</p>
-            </div>
-
-            <div className="flex space-x-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={isCreating} className="flex-1 glass hover:bg-white/10 bg-transparent">
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={!finalPhoto || isCreating} className="flex-1 glass hover:bg-white/20">
-                {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : "Fazer Check-in"}
-              </Button>
-            </div>
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              disabled={isCreating || !finalPhoto}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Publicando...
+                </>
+              ) : (
+                <>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Fazer Check-in
+                </>
+              )}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
