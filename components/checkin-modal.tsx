@@ -1,3 +1,4 @@
+// components/checkin-modal.tsx
 "use client"
 
 import { useState } from "react"

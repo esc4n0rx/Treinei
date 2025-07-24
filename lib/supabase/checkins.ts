@@ -1,3 +1,4 @@
+// lib/supabase/checkins.ts
 import { supabase } from '../supabase';
 import { Checkin, CreateCheckinData, CheckinComment } from '@/types/checkin';
 import { uploadToCloudinary } from '../cloudinary';
@@ -129,10 +130,10 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
       public_id: `checkin_${userId}_${grupo_id}_${Date.now()}`,
       transformation: {
         width: 1080,
-        height: 1080,
+        height: 1350,
         crop: 'limit',
         quality: 'auto:good',
-        fetch_format: 'auto'
+        format: 'webp' // Converte para WebP para máxima compressão
       }
     })
     

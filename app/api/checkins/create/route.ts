@@ -1,11 +1,10 @@
+// app/api/checkins/create/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 import { createCheckin } from '@/lib/supabase/checkins'
 
 export async function POST(request: NextRequest) {
   try {
-
-    
     const authHeader = request.headers.get('Authorization')
     const token = extractTokenFromHeader(authHeader || '')
 
@@ -20,7 +19,6 @@ export async function POST(request: NextRequest) {
     const decoded = verifyToken(token)
     const userId = decoded.userId
 
-
     const formData = await request.formData()
     
     const grupo_id = formData.get('grupo_id') as string
@@ -28,7 +26,6 @@ export async function POST(request: NextRequest) {
     const local = formData.get('local') as string
     const data_checkin = formData.get('data_checkin') as string
     const foto = formData.get('foto') as File
-
 
     if (!grupo_id || !foto) {
       console.error('Dados obrigatórios faltando:', { grupo_id: !!grupo_id, foto: !!foto })
@@ -46,11 +43,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validar tamanho do arquivo (máximo 10MB)
-    if (foto.size > 10 * 1024 * 1024) {
-
+    // Validar tamanho do arquivo (máximo 15MB)
+    if (foto.size > 15 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, error: 'Imagem muito grande. Máximo 10MB' },
+        { success: false, error: 'Imagem muito grande. Máximo 15MB' },
         { status: 400 }
       )
     }
@@ -66,10 +62,8 @@ export async function POST(request: NextRequest) {
     const result = await createCheckin(checkinData, userId)
 
     if (result.success) {
-
       return NextResponse.json(result, { status: 201 })
     } else {
-
       return NextResponse.json(result, { status: 400 })
     }
   } catch (error) {
