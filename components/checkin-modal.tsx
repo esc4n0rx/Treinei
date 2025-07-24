@@ -16,35 +16,22 @@ import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import { toast } from "sonner"
 
-// Carrega o componente de recorte dinamicamente com configuração mais robusta para produção
+// Import dinâmico mais robusto para o novo ImageCropper
 const ImageCropper = dynamic(
   () => import('./image-cropper').then(mod => {
-    console.log('✅ ImageCropper carregado com sucesso')
+    console.log('✅ Novo ImageCropper carregado')
     return mod.ImageCropper
-  }).catch((error) => {
-    console.error('❌ Erro ao carregar ImageCropper:', error)
-    // Retornar um componente de fallback em caso de erro
-    return () => (
-      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
-        <div className="bg-white/10 backdrop-blur-md p-6 rounded-lg text-white text-center">
-          <p>Erro ao carregar o editor de imagem</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Recarregar página
-          </Button>
-        </div>
-      </div>
-    )
   }),
   {
     ssr: false,
-    loading: () => {
-      console.log('⏳ Carregando ImageCropper...')
-      return (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-white"/>
+    loading: () => (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+        <div className="text-center text-white">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2"/>
+          <p>Carregando editor...</p>
         </div>
-      )
-    }
+      </div>
+    )
   }
 )
 
@@ -75,21 +62,44 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => formatDateForInput(new Date()));
   const [imageToCrop, setImageToCrop] = useState<string>("")
-  const [cropperLoaded, setCropperLoaded] = useState(false)
 
   const handleImageSelected = useCallback((file: File) => {
-    console.log('🖼️ Imagem selecionada:', file.name, file.size)
+    console.log('🖼️ Nova imagem selecionada:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    })
+    
+    // Validar se é uma imagem
+    if (!file.type.startsWith('image/')) {
+      console.error('❌ Arquivo não é uma imagem:', file.type)
+      toast.error("Por favor,selecione um arquivo de imagem válido.")
+      return
+    }
+
+    // Validar tamanho (máximo 10MB antes do processamento)
+    if (file.size > 10 * 1024 * 1024) {
+      console.error('❌ Arquivo muito grande:', file.size)
+      toast.error("Imagem muito grande. Máximo 10MB.")
+      return
+    }
     
     const reader = new FileReader()
     reader.onload = () => {
       const result = reader.result as string
-      console.log('📸 Definindo imageToCrop, tamanho da string:', result.length)
-      setImageToCrop(result)
+      console.log('📸 Imagem convertida para base64:', {
+        length: result.length,
+        type: result.substring(0, 30),
+        isValidDataUrl: result.startsWith('data:image/')
+      })
       
-      // Dar um pequeno delay para garantir que o state foi atualizado
-      setTimeout(() => {
-        console.log('🎯 Estado do imageToCrop após update:', !!result)
-      }, 100)
+      if (!result.startsWith('data:image/')) {
+        console.error('❌ Base64 inválido gerado')
+        toast.error("Erro ao processar a imagem.")
+        return
+      }
+      
+      setImageToCrop(result)
     }
     reader.onerror = (error) => {
       console.error('❌ Erro ao ler arquivo:', error)
@@ -155,18 +165,16 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
       setLocal("")
       setSelectedDate(formatDateForInput(new Date()))
       setImageToCrop("")
-      setCropperLoaded(false)
     }
     onOpenChange(isOpen)
   }
 
-  // Log para debug
-  console.log('🔍 Estado atual:', {
+  // Log de debug
+  console.log('🔍 Estado do CheckinModal:', {
     imageToCrop: !!imageToCrop,
     imageToCropLength: imageToCrop.length,
     finalPhoto: !!finalPhoto,
-    open,
-    cropperLoaded
+    open
   })
 
   if (!activeGroup) {
@@ -176,13 +184,12 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   return (
     <>
       {imageToCrop && (
-        <div key="image-cropper">
-          <ImageCropper
-            imageToCrop={imageToCrop}
-            onConfirm={handleCropConfirm}
-            onCancel={handleCropCancel}
-          />
-        </div>
+        <ImageCropper
+          key={imageToCrop.length} // Force re-render when image changes
+          imageToCrop={imageToCrop}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
       )}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="glass-card max-w-md mx-4 max-h-[90vh] overflow-y-auto">
