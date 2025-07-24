@@ -32,10 +32,10 @@ export function PushNotificationManager() {
           return;
         }
 
-        // 2. Obter VAPID key do environment
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        // 2. Obter VAPID key do environment (CORRIGIDO)
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
         if (!vapidKey) {
-          console.error("VAPID public key não está definida.");
+          console.error("VAPID public key não está definida. Verifique o nome da variável de ambiente.");
           return;
         }
 
