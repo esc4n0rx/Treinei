@@ -1,9 +1,63 @@
-Treinei - Social Fitness App🎯 Sobre o ProjetoO Treinei é uma aplicação web social e de gamificação focada em fitness, construída com as mais modernas tecnologias do ecossistema JavaScript. A plataforma permite que usuários registrem seus treinos (check-ins), interajam com publicações de amigos, criem e participem de grupos, e compitam em um ranking global e de grupos.Este projeto foi desenvolvido utilizando Next.js (App Router) para o frontend e backend (rotas de API), Supabase como banco de dados PostgreSQL e para autenticação, e Tailwind CSS para uma estilização moderna e consistente, seguindo as melhores práticas de desenvolvimento e componentização com React.✨ Funcionalidades PrincipaisAutenticação de Usuários: Sistema completo de registro, login (com e-mail/senha e Google) e gerenciamento de sessão com JWT.Check-ins: Usuários podem registrar seus treinos, adicionando uma foto e uma descrição.Feed Social: Um dashboard onde os usuários podem ver os check-ins de todos na plataforma.Interações Sociais: Curta e comente nos check-ins de outros usuários.Grupos: Crie grupos públicos ou privados, convide membros e compartilhe um feed de check-ins exclusivo.Ranking: Sistema de pontuação que classifica usuários e grupos com base na frequência de treinos.Perfis de Usuário: Páginas de perfil personalizáveis com histórico de check-ins e informações.Progressive Web App (PWA): Otimizado para ser instalado em dispositivos móveis, com suporte a notificações push e funcionamento offline.Upload de Imagens: Integração com Cloudinary para armazenamento de fotos de check-in e logos de grupos.🚀 Tecnologias UtilizadasEste projeto foi construído com uma stack moderna e performática:TecnologiaDescriçãoNext.jsFramework React para renderização no servidor (SSR), geração de sites estáticos (SSG) e rotas de API.ReactBiblioteca para construção de interfaces de usuário componentizadas.TypeScriptSuperset do JavaScript que adiciona tipagem estática ao código.Tailwind CSSFramework CSS utility-first para estilização rápida e customizável.Shadcn/UIColeção de componentes de UI reutilizáveis e acessíveis.SupabasePlataforma open-source que oferece banco de dados PostgreSQL, autenticação, e APIs.CloudinarySolução para gerenciamento e upload de mídias (imagens/vídeos).React QueryBiblioteca para fetching, caching e atualização de dados de forma eficiente.ZodBiblioteca para validação de esquemas e tipos.PWACapacidades de Progressive Web App para uma experiência nativa no mobile.⚙️ Primeiros PassosPara executar este projeto localmente, siga os passos abaixo.Pré-requisitosNode.js (versão 20.x ou superior)pnpm (gerenciador de pacotes)Uma conta no Supabase para o banco de dados e autenticação.Uma conta no Cloudinary para o armazenamento de imagens.Variáveis de AmbienteCrie um arquivo .env.local na raiz do projeto e adicione as seguintes variáveis, substituindo os valores pelos dados das suas contas nos serviços:# Supabase
+# Treinei - Social Fitness App
+
+## 🎯 Sobre o Projeto
+
+O **Treinei** é uma aplicação web social com foco em fitness e gamificação, desenvolvida com as tecnologias mais modernas do ecossistema JavaScript. A plataforma permite que usuários:
+
+* Registrem seus treinos (check-ins);
+* Interajam com publicações de amigos;
+* Criem e participem de grupos;
+* Compitam em rankings globais e por grupo.
+
+O projeto foi desenvolvido com **Next.js (App Router)** para frontend e backend, **Supabase** como banco de dados (PostgreSQL) e autenticação, e **Tailwind CSS** para uma estilização moderna, eficiente e consistente, seguindo as melhores práticas com **React** e componentização reutilizável.
+
+## ✨ Funcionalidades Principais
+
+* **Autenticação de Usuários**: Registro, login com e-mail/senha ou Google, gerenciamento de sessão via JWT.
+* **Check-ins**: Registro de treinos com imagem e descrição.
+* **Feed Social**: Acompanhe os check-ins públicos de outros usuários.
+* **Interações Sociais**: Curta e comente check-ins de outros usuários.
+* **Grupos**: Crie grupos públicos/privados com feed exclusivo.
+* **Ranking**: Classificação por frequência de treinos (global e por grupo).
+* **Perfil de Usuário**: Página com histórico de treinos e dados personalizados.
+* **Progressive Web App (PWA)**: Instalação no dispositivo móvel, suporte a notificações push e uso offline.
+* **Upload de Imagens**: Integração com **Cloudinary** para armazenamento eficiente de fotos e logos.
+
+## 🚀 Tecnologias Utilizadas
+
+| Tecnologia   | Descrição                                                            |
+| ------------ | -------------------------------------------------------------------- |
+| Next.js      | Framework React com suporte SSR, SSG e rotas de API                  |
+| React        | Biblioteca para construção de interfaces reativas                    |
+| TypeScript   | Superset de JavaScript com tipagem estática                          |
+| Tailwind CSS | Framework CSS utility-first para estilização rápida                  |
+| Shadcn/UI    | Componentes de interface acessíveis e reutilizáveis                  |
+| Supabase     | Plataforma open-source com banco PostgreSQL, autenticação e API REST |
+| Cloudinary   | Armazenamento e gerenciamento de mídias (imagens e vídeos)           |
+| React Query  | Fetching, caching e sincronização de dados eficiente                 |
+| Zod          | Validação de esquemas com tipagem                                    |
+| PWA          | Recursos de Progressive Web App (notificações, offline, instalação)  |
+
+## ⚙️ Primeiros Passos
+
+### Pré-requisitos
+
+* Node.js (versão 20.x ou superior)
+* pnpm (gerenciador de pacotes)
+* Conta no [Supabase](https://supabase.com)
+* Conta no [Cloudinary](https://cloudinary.com)
+
+### Variáveis de Ambiente
+
+Crie um arquivo `.env.local` na raiz do projeto e adicione:
+
+```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=URL_DO_SEU_PROJETO_SUPABASE
 NEXT_PUBLIC_SUPABASE_ANON_KEY=SUA_CHAVE_ANON_SUPABASE
 SUPABASE_SERVICE_ROLE_KEY=SUA_CHAVE_DE_SERVICO_SUPABASE
 
-# Auth
+# JWT
 JWT_SECRET=SEU_SEGREDO_JWT_PARA_ASSINAR_TOKENS
 
 # Cloudinary
@@ -11,7 +65,7 @@ CLOUDINARY_CLOUD_NAME=NOME_DO_SEU_CLOUD_CLOUDINARY
 CLOUDINARY_API_KEY=SUA_API_KEY_CLOUDINARY
 CLOUDINARY_API_SECRET=SEU_API_SECRET_CLOUDINARY
 
-# Push Notifications (VAPID)
+# Notificações Push (VAPID)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=SUA_CHAVE_PUBLICA_VAPID
 VAPID_PRIVATE_KEY=SUA_CHAVE_PRIVADA_VAPID
 VAPID_EMAIL=seu-email@exemplo.com
@@ -20,45 +74,113 @@ VAPID_EMAIL=seu-email@exemplo.com
 GOOGLE_CLIENT_ID=SEU_ID_DE_CLIENTE_GOOGLE
 GOOGLE_CLIENT_SECRET=SEU_SEGREDO_DE_CLIENTE_GOOGLE
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
-InstalaçãoClone o repositório:git clone [https://github.com/seu-usuario/treinei.git](https://github.com/seu-usuario/treinei.git)
+```
+
+### Instalação
+
+```bash
+git clone https://github.com/seu-usuario/treinei.git
 cd treinei
-Instale as dependências:pnpm install
-Executando a AplicaçãoPara iniciar o servidor de desenvolvimento, execute:pnpm dev
-Abra http://localhost:3000 no seu navegador para ver a aplicação em funcionamento.📂 Estrutura do ProjetoO projeto segue a estrutura do App Router do Next.js, otimizando a organização e o uso de Server/Client Components./
+pnpm install
+```
+
+### Executando a Aplicação
+
+```bash
+pnpm dev
+```
+
+Acesse `http://localhost:3000` no navegador.
+
+## 📂 Estrutura do Projeto
+
+```
+/
 ├── app/
-│   ├── (app)/                # Rotas protegidas (exigem autenticação)
-│   │   ├── dashboard/
-│   │   ├── groups/
-│   │   └── ...
-│   ├── api/                  # Route Handlers (Backend API)
-│   │   ├── auth/
-│   │   ├── checkins/
-│   │   └── ...
-│   ├── layout.tsx            # Layout principal da aplicação
-│   └── page.tsx              # Página inicial (login/registro)
+│   ├── (app)/               # Rotas protegidas (dashboard, grupos, etc)
+│   ├── api/                 # Rotas de API (auth, check-ins, etc)
+│   ├── layout.tsx          # Layout principal da aplicação
+│   └── page.tsx            # Página inicial (login e registro)
 │
 ├── components/
-│   ├── ui/                   # Componentes de UI (shadcn/ui)
-│   ├── *.tsx                 # Componentes específicos da aplicação
+│   ├── ui/                 # Componentes da UI (Shadcn)
+│   └── *.tsx               # Componentes personalizados
 │
-├── contexts/                 # Contextos React para gerenciamento de estado
-│   ├── AuthContext.tsx
-│   └── ...
+├── contexts/              # Contextos React para estado global
+│   └── AuthContext.tsx
 │
-├── hooks/                    # Hooks customizados para lógica reutilizável
-│   ├── useAuth.ts
-│   └── ...
+├── hooks/                 # Hooks customizados
+│   └── useAuth.ts
 │
 ├── lib/
-│   ├── api/                  # Funções cliente para chamar a API interna
-│   ├── supabase/             # Lógica de acesso direto ao Supabase (Server-side)
-│   ├── auth.ts               # Utilitários de autenticação
-│   ├── cloudinary.ts         # Configuração do Cloudinary
-│   └── utils.ts              # Funções utilitárias genéricas
+│   ├── api/               # Funções cliente para comunicação com API
+│   ├── supabase/          # Configurações do Supabase
+│   ├── auth.ts            # Utilitários de autenticação
+│   ├── cloudinary.ts      # Configuração do Cloudinary
+│   └── utils.ts           # Funções auxiliares
 │
-├── public/                   # Arquivos estáticos (imagens, manifest, service worker)
-│
-├── types/                    # Definições de tipos e interfaces TypeScript
-│
-└── tailwind.config.ts        # Configuração do tema do Tailwind CSS
-Endpoints da APIA aplicação expõe uma série de endpoints de API para lidar com as operações de backend. Eles estão localizados em app/api/.POST /api/auth/register: Registra um novo usuário.POST /api/auth/login: Autentica um usuário e retorna um JWT.GET /api/auth/google: Inicia o fluxo de autenticação com o Google.GET /api/checkins: Retorna o feed de check-ins.POST /api/checkins/create: Cria um novo check-in.POST /api/checkins/[id]/like: Curte/descurte um check-in.POST /api/checkins/[id]/comments: Adiciona um comentário a um check-in.GET /api/groups: Lista os grupos do usuário.POST /api/groups/create: Cria um novo grupo.POST /api/groups/join: Entra em um grupo existente com um código.GET /api/ranking: Retorna os dados do ranking.GET /api/profile: Retorna os dados do perfil do usuário logado.PUT /api/profile: Atualiza o perfil do usuário.👨‍💻 ContribuiçãoContribuições são bem-vindas! Se você tem alguma ideia para melhorar o projeto, sinta-se à vontade para abrir uma issue ou enviar um pull request.Faça um fork do projeto.Crie uma nova branch (git checkout -b feature/minha-feature).Faça o commit das suas alterações (git commit -m 'Adiciona minha-feature').Faça o push para a branch (git push origin feature/minha-feature).Abra um Pull Request.📄 LicençaEste projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
+├── public/                # Arquivos estáticos (imagens, manifest)
+├── types/                 # Tipagens e interfaces TS
+└── tailwind.config.ts     # Configuração do Tailwind
+```
+
+## 📡 Endpoints da API
+
+Localizados em `app/api/`:
+
+### Autenticação
+
+* `POST /api/auth/register`: Registra um novo usuário.
+* `POST /api/auth/login`: Autentica e retorna um token JWT.
+* `GET /api/auth/google`: Login com Google.
+
+### Check-ins
+
+* `GET /api/checkins`: Lista check-ins recentes.
+* `POST /api/checkins/create`: Cria um novo check-in.
+* `POST /api/checkins/[id]/like`: Curte ou descurte um check-in.
+* `POST /api/checkins/[id]/comments`: Adiciona comentário em um check-in.
+
+### Grupos
+
+* `GET /api/groups`: Lista grupos do usuário.
+* `POST /api/groups/create`: Cria um novo grupo.
+* `POST /api/groups/join`: Entra em um grupo por código.
+
+### Ranking
+
+* `GET /api/ranking`: Recupera dados do ranking.
+
+### Perfil
+
+* `GET /api/profile`: Recupera informações do perfil do usuário.
+* `PUT /api/profile`: Atualiza os dados do perfil.
+
+## 👨‍💻 Contribuição
+
+Contribuições são muito bem-vindas!
+
+1. Faça um fork do projeto.
+2. Crie uma branch com sua feature:
+
+```bash
+git checkout -b feature/nome-da-feature
+```
+
+3. Commit suas mudanças:
+
+```bash
+git commit -m "feat: adiciona nome-da-feature"
+```
+
+4. Faça push da sua branch:
+
+```bash
+git push origin feature/nome-da-feature
+```
+
+5. Abra um Pull Request.
+
+## 📄 Licença
+
+Este projeto está licenciado sob a **MIT License**. Consulte o arquivo `LICENSE` para mais informações.
