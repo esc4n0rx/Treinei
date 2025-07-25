@@ -44,9 +44,9 @@ type AddCommentResponse = ApiResponse<{ comment: CheckinComment }>;
 /**
  * Busca check-ins de um grupo específico com curtidas e comentários
  */
-export async function getGroupCheckins(groupId: string, limit = 50): Promise<GetCheckinsResponse> {
+export async function getGroupCheckins(groupId: string, startDate?: string, endDate?: string, limit = 50): Promise<GetCheckinsResponse> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('treinei_checkins')
       .select(`
         id, usuario_id, grupo_id, foto_url, observacao, local, data_checkin, created_at, updated_at,
@@ -59,6 +59,14 @@ export async function getGroupCheckins(groupId: string, limit = 50): Promise<Get
       .order('data_checkin', { ascending: false })
       .limit(limit);
 
+    if (startDate && endDate) {
+      query = query
+        .gte('data_checkin', startDate)
+        .lt('data_checkin', endDate);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error('Erro ao buscar check-ins:', error);
       return { success: false, error: 'Erro ao carregar check-ins' };
@@ -68,7 +76,6 @@ export async function getGroupCheckins(groupId: string, limit = 50): Promise<Get
     const checkins: Checkin[] = (data as CheckinFromSupabase[]).map(checkin => ({
       ...checkin,
       _count: {
-        // CORREÇÃO: Acessa a contagem real retornada pelo Supabase
         curtidas: checkin._count[0]?.count || 0,
         comentarios: checkin._count_comments[0]?.count || 0
       }

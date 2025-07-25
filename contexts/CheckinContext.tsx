@@ -18,8 +18,8 @@ interface CheckinState {
 
 interface CheckinContextType extends CheckinState {
   createCheckin: (data: CreateCheckinData) => Promise<{ success: boolean; error?: string }>
-  loadGroupCheckins: (groupId: string) => Promise<void>
-  refreshCheckins: (groupId: string) => Promise<void>
+  loadGroupCheckins: (groupId: string, startDate?: string, endDate?: string) => Promise<void>
+  refreshCheckins: (groupId: string, startDate?: string, endDate?: string) => Promise<void>
   isCreating: boolean
 }
 
@@ -52,6 +52,10 @@ function checkinReducer(state: CheckinState, action: CheckinAction): CheckinStat
         error: null
       }
     case 'ADD_CHECKIN':
+      // Adiciona o novo check-in apenas se ele não estiver já na lista
+      if (state.checkins.some(c => c.id === action.payload.id)) {
+        return state;
+      }
       return {
         ...state,
         checkins: [action.payload, ...state.checkins]
@@ -68,11 +72,11 @@ const CheckinContext = createContext<CheckinContextType | null>(null)
 export function CheckinProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(checkinReducer, initialState)
 
-  const loadGroupCheckins = useCallback(async (groupId: string) => {
+  const loadGroupCheckins = useCallback(async (groupId: string, startDate?: string, endDate?: string) => {
     dispatch({ type: 'SET_LOADING', payload: true })
     
     try {
-      const result = await fetchGroupCheckins(groupId)
+      const result = await fetchGroupCheckins(groupId, startDate, endDate)
       
       if (result.success && result.checkins) {
         dispatch({
@@ -90,8 +94,8 @@ export function CheckinProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const refreshCheckins = useCallback(async (groupId: string) => {
-    await loadGroupCheckins(groupId)
+  const refreshCheckins = useCallback(async (groupId: string, startDate?: string, endDate?: string) => {
+    await loadGroupCheckins(groupId, startDate, endDate)
   }, [loadGroupCheckins])
 
   const createCheckin = useCallback(async (data: CreateCheckinData) => {

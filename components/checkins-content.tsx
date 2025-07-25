@@ -1,7 +1,7 @@
 // components/checkins-content.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,12 +11,14 @@ import { CheckinModal } from "@/components/checkin-modal"
 import { CheckinActions } from "@/components/checkin-actions"
 import { CommentDialog } from "@/components/comment-dialog"
 import { GroupEmptyState } from "@/components/group-empty-state"
-import { Camera, Clock, MapPin, Building, Loader2 } from "lucide-react"
+import { Camera, Clock, MapPin, Building, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import { CheckinComment } from "@/types/checkin"
 import { toast } from "sonner"
-import Link from "next/link" // Adicionado import
+import Link from "next/link" 
+import { format, addDays, subDays, isToday } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 const formatCheckinDate = (dateString: string): string => {
   try {
@@ -42,6 +44,7 @@ const formatCheckinDate = (dateString: string): string => {
 }
 
 export function CheckinsContent() {
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [checkinModalOpen, setCheckinModalOpen] = useState(false)
   const [commentDialogOpen, setCommentDialogOpen] = useState(false)
   const [selectedCheckinId, setSelectedCheckinId] = useState<string | null>(null)
@@ -56,11 +59,32 @@ export function CheckinsContent() {
     loadGroupCheckins 
   } = useCheckins()
 
-  useEffect(() => {
-    if (activeGroup?.id) {
-      loadGroupCheckins(activeGroup.id)
+  const handlePreviousDay = useCallback(() => {
+    setSelectedDate(prev => subDays(prev, 1));
+  }, []);
+
+  const handleNextDay = useCallback(() => {
+    if (!isToday(selectedDate)) {
+      setSelectedDate(prev => addDays(prev, 1));
     }
-  }, [activeGroup?.id, loadGroupCheckins])
+  }, [selectedDate]);
+
+  const loadCheckinsForDate = useCallback((date: Date) => {
+    if (activeGroup?.id) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      loadGroupCheckins(activeGroup.id, startDate.toISOString(), endDate.toISOString());
+    }
+  }, [activeGroup?.id, loadGroupCheckins]);
+
+  useEffect(() => {
+    loadCheckinsForDate(selectedDate);
+  }, [selectedDate, loadCheckinsForDate]);
+
 
   const handleLike = async (checkinId: string) => {
     try {
@@ -76,8 +100,7 @@ export function CheckinsContent() {
       const result = await response.json()
       
       if (result.success && activeGroup?.id) {
-        // Recarregar checkins para atualizar contadores
-        await loadGroupCheckins(activeGroup.id)
+        loadCheckinsForDate(selectedDate);
       } else {
         toast.error(result.error || 'Erro ao curtir check-in')
       }
@@ -130,15 +153,13 @@ export function CheckinsContent() {
       const result = await response.json()
       
       if (result.success && result.comment) {
-        // Atualizar comentários localmente
         setCheckinComments((prev: { [x: string]: any }) => ({
           ...prev,
           [checkinId]: [...(prev[checkinId] || []), result.comment]
         }))
         
-        // Recarregar checkins para atualizar contador
         if (activeGroup?.id) {
-          await loadGroupCheckins(activeGroup.id)
+          loadCheckinsForDate(selectedDate);
         }
       } else {
         toast.error(result.error || 'Erro ao adicionar comentário')
@@ -163,6 +184,10 @@ export function CheckinsContent() {
     return <GroupEmptyState />
   }
 
+  const formattedDate = isToday(selectedDate)
+    ? `Hoje, ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
+    : format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+
   return (
     <div className="p-4 space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
@@ -172,29 +197,20 @@ export function CheckinsContent() {
         </p>
       </motion.div>
 
-      {/* Stats do usuário - mais compacto */}
-      {userStats && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="glass-card">
-            <CardContent className="p-3">
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <p className="text-xl font-bold text-primary">{userStats.today}</p>
-                  <p className="text-xs text-muted-foreground">Hoje</p>
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-green-500">{userStats.weekly}</p>
-                  <p className="text-xs text-muted-foreground">Esta Semana</p>
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-purple-500">{userStats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+      {/* Date Navigation */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <div className="flex items-center justify-between p-2 rounded-lg glass-card">
+          <Button onClick={handlePreviousDay} variant="ghost" size="icon" className="glass hover:bg-white/10">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="text-center">
+            <p className="font-semibold">{formattedDate}</p>
+          </div>
+          <Button onClick={handleNextDay} variant="ghost" size="icon" className="glass hover:bg-white/10" disabled={isToday(selectedDate)}>
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
+      </motion.div>
 
       {/* Botão de Check-in - mais compacto */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -230,9 +246,9 @@ export function CheckinsContent() {
             className="text-center py-12"
           >
             <Camera className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum check-in ainda</h3>
+            <h3 className="text-lg font-semibold mb-2">Nenhum check-in encontrado</h3>
             <p className="text-muted-foreground mb-4">
-              Seja o primeiro a fazer check-in no grupo!
+              Não há registros de treinos para este dia.
             </p>
           </motion.div>
         )}

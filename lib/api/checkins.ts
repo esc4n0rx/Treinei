@@ -6,11 +6,20 @@ const API_BASE = '/api/checkins'
 /**
  * Busca check-ins de um grupo
  */
-export async function fetchGroupCheckins(groupId: string): Promise<CheckinsResponse> {
+export async function fetchGroupCheckins(groupId: string, startDate?: string, endDate?: string): Promise<CheckinsResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
     
-    const response = await fetch(`${API_BASE}?groupId=${groupId}`, {
+    const url = new URL(API_BASE, window.location.origin)
+    url.searchParams.set('groupId', groupId)
+    if (startDate) {
+      url.searchParams.set('startDate', startDate)
+    }
+    if (endDate) {
+      url.searchParams.set('endDate', endDate)
+    }
+    
+    const response = await fetch(url.toString(), {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

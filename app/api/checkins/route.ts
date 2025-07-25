@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const groupId = searchParams.get('groupId')
+    const startDate = searchParams.get('startDate') // Novo parâmetro
+    const endDate = searchParams.get('endDate') // Novo parâmetro
 
     if (!groupId) {
       return NextResponse.json(
@@ -27,8 +29,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Buscar check-ins do grupo
-    const result = await getGroupCheckins(groupId)
+    // Buscar check-ins do grupo, agora com filtro de data
+    const result = await getGroupCheckins(groupId, startDate || undefined, endDate || undefined)
 
     if (result.success && result.checkins) {
 
