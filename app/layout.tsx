@@ -1,12 +1,11 @@
-// app/layout.tsx
+
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
-import Script from "next/script" // Importar o componente Script
+import Script from "next/script"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Providers } from "./providers"
-import { UpdatePrompt } from "@/components/update-prompt"
 import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -37,7 +36,6 @@ export default function RootLayout({
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
             {children}
-            <UpdatePrompt />
             <Toaster
               position="top-center"
               toastOptions={{
@@ -52,7 +50,6 @@ export default function RootLayout({
           </ThemeProvider>
         </Providers>
         
-        {/* Adicionar scripts do Firebase Messaging */}
         <Script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" strategy="beforeInteractive" />
         <Script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js" strategy="beforeInteractive" />
       </body>
