@@ -1,4 +1,6 @@
 // types/group.ts
+import { Gyncana } from "./gyncana";
+
 export interface Group {
   id: string
   nome: string
@@ -24,6 +26,7 @@ export interface Group {
   _count?: {
     membros?: number
   }
+  activeGyncana?: Gyncana;
 }
 
 export interface GroupMember {

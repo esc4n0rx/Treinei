@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { Group, GroupMember, CreateGroupData, JoinGroupData, UpdateGroupData } from '@/types/group'
 import { hashPassword, verifyPassword } from '../auth'
 import { uploadToCloudinary } from '../cloudinary' // Import direto
+import { getActiveGyncanaByGroupId } from './gyncana'
 
 /**
  * Busca todos os grupos do usuário
@@ -41,20 +42,23 @@ export async function getUserGroups(userId: string) {
       console.error('Erro ao buscar grupos do usuário:', error)
       return { success: false, error: 'Erro ao carregar grupos' }
     }
+    
+    const groupsWithGyncana = await Promise.all(data.map(async (item) => {
+        const grupo = item.grupo as any;
+        const activeGyncana = await getActiveGyncanaByGroupId(grupo.id);
+        return {
+            ...grupo,
+            _count: {
+                membros: grupo?._count?.[0]?.count || 0
+            },
+            userRole: item.papel,
+            joinedAt: item.data_entrada,
+            activeGyncana: activeGyncana || undefined,
+        }
+    }));
 
-    const groups = data?.map(item => {
-      const grupo = item.grupo as any; // Cast para any para acessar _count
-      return {
-        ...grupo,
-        _count: {
-            membros: grupo?._count?.[0]?.count || 0
-        },
-        userRole: item.papel,
-        joinedAt: item.data_entrada
-      }
-    }) || []
 
-    return { success: true, groups }
+    return { success: true, groups: groupsWithGyncana }
   } catch (error) {
     console.error('Erro ao buscar grupos:', error)
     return { success: false, error: 'Erro interno' }
@@ -389,11 +393,14 @@ export async function getGroupById(groupId: string, userId?: string) {
         }
       }
     }
+    
+    const activeGyncana = await getActiveGyncanaByGroupId(groupId);
 
     const group = {
       ...data,
       userMembership,
-      membros: data.membros?.filter((m: any) => m.status === 'ativo') || []
+      membros: data.membros?.filter((m: any) => m.status === 'ativo') || [],
+      activeGyncana: activeGyncana || undefined
     }
 
     return { success: true, group }

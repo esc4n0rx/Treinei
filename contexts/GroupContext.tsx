@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { Group } from '@/types/group'
 import { fetchUserGroups } from '@/lib/api/groups'
 import { useAuth } from '@/hooks/useAuth'
@@ -27,7 +27,7 @@ export function GroupProvider({ children }: GroupProviderProps) {
 
   const [loading, setLoading] = useState(true)
 
-  const refreshGroups = async () => {
+  const refreshGroups = useCallback(async () => {
     if (!isAuthenticated) {
       setGroups([])
       setActiveGroupState(null)
@@ -42,18 +42,29 @@ export function GroupProvider({ children }: GroupProviderProps) {
       if (result.success && result.groups) {
         setGroups(result.groups)
         
-        // Se não há grupo ativo, definir o primeiro da lista
-        if (!activeGroup && result.groups.length > 0) {
-          const storedActiveGroupId = localStorage.getItem('activeGroupId')
-          const groupToActivate = storedActiveGroupId 
-            ? result.groups.find(g => g.id === storedActiveGroupId) 
-            : result.groups[0]
-          
-          if (groupToActivate) {
-            setActiveGroupState(groupToActivate)
-            localStorage.setItem('activeGroupId', groupToActivate.id)
-          }
+        // --- LÓGICA CORRIGIDA ---
+        // Determina qual grupo deve estar ativo
+        const currentActiveGroupId = activeGroup?.id || localStorage.getItem('activeGroupId');
+        let groupToActivate: Group | null = null; // Tipagem explícita
+
+        if (currentActiveGroupId) {
+            // Encontra a versão MAIS RECENTE do grupo ativo na lista recém-buscada
+            const foundGroup = result.groups.find(g => g.id === currentActiveGroupId);
+            groupToActivate = foundGroup || null; // Converte undefined para null
         }
+
+        // Se não encontrar (ou se não havia um ativo), define o primeiro da lista
+        if (!groupToActivate && result.groups.length > 0) {
+            groupToActivate = result.groups[0];
+        }
+        
+        // Atualiza o estado com o objeto completo e fresco
+        setActiveGroupState(groupToActivate);
+        if (groupToActivate) {
+            localStorage.setItem('activeGroupId', groupToActivate.id);
+        }
+        // --- FIM DA LÓGICA CORRIGIDA ---
+
       } else {
         setGroups([])
         setActiveGroupState(null)
@@ -66,7 +77,7 @@ export function GroupProvider({ children }: GroupProviderProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAuthenticated, activeGroup?.id]);
 
   const setActiveGroup = (group: Group | null) => {
     setActiveGroupState(group)
@@ -85,7 +96,7 @@ export function GroupProvider({ children }: GroupProviderProps) {
       setActiveGroupState(null)
       setLoading(false)
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, refreshGroups])
 
   const hasGroups = groups.length > 0
 

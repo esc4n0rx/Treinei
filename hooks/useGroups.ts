@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { createGroupApi, joinGroupApi, fetchPublicGroups } from '@/lib/api/groups'
 import { CreateGroupData, JoinGroupData, Group } from '@/types/group'
 import { toast } from 'sonner'
+import { CreateGyncanaData } from '@/types/gyncana'
+import { createGyncanaApi } from '@/lib/api/gyncana'
 
 export function useGroups() {
   const context = useGroupsContext()
@@ -74,6 +76,16 @@ export function useGroups() {
       setLoadingPublic(false)
     }
   }
+  
+  const createGyncana = async (data: CreateGyncanaData) => {
+    // A lógica de loading será controlada dentro do modal
+    const result = await createGyncanaApi(data);
+    if (result.success) {
+      // Esta é a parte crucial: atualizar o contexto após a criação
+      await context.refreshGroups();
+    }
+    return result;
+  }
 
   return {
     ...context,
@@ -83,6 +95,7 @@ export function useGroups() {
     publicGroups,
     isCreating,
     isJoining,
-    loadingPublic
+    loadingPublic,
+    createGyncana, // Expondo a nova função
   }
 }

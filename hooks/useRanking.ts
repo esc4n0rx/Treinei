@@ -1,62 +1,80 @@
-import { useState, useEffect, useCallback } from 'react'
-import { GroupRanking } from '@/types/ranking'
-import { fetchGroupRanking } from '@/lib/api/ranking'
+import { useState, useEffect, useCallback } from 'react';
+import { GroupRanking } from '@/types/ranking';
+import { Gyncana, GyncanaRanking } from '@/types/gyncana';
+import { fetchGroupRanking } from '@/lib/api/ranking';
+import { fetchGyncanaRanking } from '@/lib/api/gyncana';
+import { useGroups } from './useGroups';
+import { useAuth } from './useAuth';
 
 export function useRanking(groupId?: string) {
-  const [weeklyRanking, setWeeklyRanking] = useState<GroupRanking | null>(null)
-  const [monthlyRanking, setMonthlyRanking] = useState<GroupRanking | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { activeGroup } = useGroups();
+  const { user } = useAuth();
+  const [weeklyRanking, setWeeklyRanking] = useState<GroupRanking | null>(null);
+  const [monthlyRanking, setMonthlyRanking] = useState<GroupRanking | null>(null);
+  const [gyncanaRanking, setGyncanaRanking] = useState<{ usuarios: GyncanaRanking[], user_position: any, gyncana: Gyncana } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadRanking = useCallback(async (period: 'weekly' | 'monthly') => {
-    if (!groupId) return
+  const activeGyncana = activeGroup?.activeGyncana;
+
+  const loadRanking = useCallback(async () => {
+    if (!groupId) return;
+
+    setLoading(true);
+    setError(null);
 
     try {
-      setLoading(true)
-      setError(null)
-
-      const result = await fetchGroupRanking(groupId, period)
-
-      if (result.success && result.ranking) {
-        if (period === 'weekly') {
-          setWeeklyRanking(result.ranking)
+      if (activeGyncana) {
+        const result = await fetchGyncanaRanking(groupId);
+        if (result.success && result.gyncana && result.ranking) {
+          const currentUserRanking = result.ranking.find(p => p.id === user?.id);
+          // Corrigido: usa 'posicao' consistentemente
+          const userPosition = currentUserRanking ? { posicao: currentUserRanking.posicao, checkins_count: currentUserRanking.checkins_count } : null;
+          
+          setGyncanaRanking({
+            usuarios: result.ranking,
+            user_position: userPosition,
+            gyncana: result.gyncana,
+          });
         } else {
-          setMonthlyRanking(result.ranking)
+          setError(result.error || 'Erro ao carregar ranking da gincana');
         }
       } else {
-        setError(result.error || 'Erro ao carregar ranking')
+        const [weeklyResult, monthlyResult] = await Promise.all([
+          fetchGroupRanking(groupId, 'weekly'),
+          fetchGroupRanking(groupId, 'monthly'),
+        ]);
+
+        if (weeklyResult.success && weeklyResult.ranking) {
+          setWeeklyRanking(weeklyResult.ranking);
+        } else {
+          setError(weeklyResult.error || 'Erro ao carregar ranking semanal');
+        }
+
+        if (monthlyResult.success && monthlyResult.ranking) {
+          setMonthlyRanking(monthlyResult.ranking);
+        } else {
+          setError(monthlyResult.error || 'Erro ao carregar ranking mensal');
+        }
       }
-    } catch (error) {
-      console.error('Erro ao carregar ranking:', error)
-      setError('Erro de conexão')
+    } catch (err) {
+      console.error('Erro ao carregar rankings:', err);
+      setError('Erro de conexão');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [groupId])
-
-  const loadBothRankings = useCallback(async () => {
-    if (!groupId) return
-
-    setLoading(true)
-    await Promise.all([
-      loadRanking('weekly'),
-      loadRanking('monthly')
-    ])
-    setLoading(false)
-  }, [groupId, loadRanking])
+  }, [groupId, activeGyncana, user?.id]);
 
   useEffect(() => {
-    if (groupId) {
-      loadBothRankings()
-    }
-  }, [groupId, loadBothRankings])
+    loadRanking();
+  }, [loadRanking]);
 
   return {
     weeklyRanking,
     monthlyRanking,
+    gyncanaRanking,
     loading,
     error,
-    refresh: loadBothRankings,
-    loadRanking
-  }
+    refresh: loadRanking,
+  };
 }
