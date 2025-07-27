@@ -28,7 +28,6 @@ const nextConfig = {
        ],
      },
      {
-      // Nova regra para o SW do Firebase
        source: '/firebase-messaging-sw.js',
        headers: [
          {

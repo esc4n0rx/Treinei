@@ -32,7 +32,7 @@ export function PushNotificationManager() {
           return;
         }
 
-        // 2. Obter VAPID key do environment (CORRIGIDO)
+        // 2. Obter VAPID key do environment
         const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
         if (!vapidKey) {
           console.error("VAPID public key não está definida. Verifique o nome da variável de ambiente.");
@@ -73,7 +73,6 @@ export function PushNotificationManager() {
 
         if (!response.ok) {
           const data = await response.json();
-          // Não mostrar erro se o dispositivo já está registrado (409 Conflict)
           if (response.status !== 409) {
              toast.error(data.error || 'Erro ao registrar para notificações.');
           } else {
@@ -87,10 +86,12 @@ export function PushNotificationManager() {
       }
     };
 
-    // Adiciona um pequeno delay para garantir que o service worker principal teve tempo de se registrar.
-    setTimeout(() => {
+    // Adiciona um delay de 5 segundos para não pedir permissão imediatamente
+    const timeoutId = setTimeout(() => {
         requestPermissionAndGetToken();
-    }, 1000);
+    }, 5000);
+
+    return () => clearTimeout(timeoutId); // Limpa o timeout se o componente for desmontado
 
   }, [isAuthenticated]);
 

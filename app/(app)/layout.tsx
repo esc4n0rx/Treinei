@@ -1,4 +1,3 @@
-// app/(app)/layout.tsx
 "use client"
 
 import type React from "react"
@@ -9,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { GroupProvider } from "@/contexts/GroupContext"
 import { CheckinProvider } from "@/contexts/CheckinContext"
 import { PushNotificationManager } from "@/components/PushNotificationManager"
+import { UpdateToast } from "@/components/update-toast"
 
 export default function AppLayout({
   children,
@@ -43,6 +43,7 @@ export default function AppLayout({
     <GroupProvider>
       <CheckinProvider>
         <PushNotificationManager />
+        <UpdateToast />
         <div className="min-h-screen bg-background pb-20">
           {children}
           <BottomNavigation />
