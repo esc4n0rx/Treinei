@@ -41,6 +41,26 @@ type GetCommentsResponse = ApiResponse<{ comments: CheckinComment[] }>;
 type AddCommentResponse = ApiResponse<{ comment: CheckinComment }>;
 
 
+
+/**
+ * Envia notificações de check-in para membros do grupo.
+ * ATUALIZADO: Agora invoca uma Edge Function dedicada.
+ */
+async function triggerCheckinNotifications(checkinId: string) {
+  try {
+    const { error } = await supabase.functions.invoke('send-new-checkin-notification', {
+      body: { checkinId },
+    });
+    if (error) {
+      throw error;
+    }
+    console.log(`[triggerCheckinNotifications] Edge function 'send-new-checkin-notification' for checkin ${checkinId} invoked successfully.`);
+  } catch (err) {
+    console.error("Erro ao invocar a edge function de notificação de check-in:", err);
+    // Não re-lançar o erro para não quebrar a experiência do usuário. O erro já foi logado.
+  }
+}
+
 /**
  * Busca check-ins de um grupo específico com curtidas e comentários
  */
@@ -176,8 +196,9 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
       _count: { curtidas: 0, comentarios: 0 },
       userLiked: false
     };
-
-    sendCheckinNotifications(checkinWithCounts);
+    
+    triggerCheckinNotifications(checkinWithCounts.id);
+    //sendCheckinNotifications(checkinWithCounts);
 
     return { success: true, checkin: checkinWithCounts };
   } catch (error) {

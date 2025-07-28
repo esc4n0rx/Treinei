@@ -2,7 +2,7 @@
 
 // A versão do cache é um identificador único para o conjunto de assets do seu app.
 // Altere esta versão sempre que fizer deploy de uma nova atualização.
-const CACHE_VERSION = 'treinei-static-v3';
+const CACHE_VERSION = 'treinei-static-v4';
 
 // Lista de recursos essenciais para o funcionamento offline do app.
 const STATIC_RESOURCES = [
