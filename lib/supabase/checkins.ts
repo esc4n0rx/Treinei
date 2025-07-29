@@ -147,8 +147,6 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
   try {
     const { grupo_id, foto, observacao, local, data_checkin } = data;
 
-    // (O restante da lógica de verificação permanece o mesmo...)
-
     const bytes = await foto.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -156,8 +154,7 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
       folder: 'treinei/checkins',
       public_id: `checkin_${userId}_${grupo_id}_${Date.now()}`,
       transformation: {
-        // A compressão principal já foi feita no cliente.
-        // Aqui apenas garantimos a padronização e otimização final.
+
         width: 1200, 
         quality: 'auto:good',
         fetch_format: 'auto' // Converte para WebP/AVIF se o navegador suportar
@@ -197,7 +194,7 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
       userLiked: false
     };
     
-    triggerCheckinNotifications(checkinWithCounts.id);
+    //triggerCheckinNotifications(checkinWithCounts.id);
     //sendCheckinNotifications(checkinWithCounts);
 
     return { success: true, checkin: checkinWithCounts };

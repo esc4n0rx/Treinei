@@ -1,3 +1,4 @@
+// types/profile.ts
 import { User } from './auth'
 
 export interface UserProfile extends User {
@@ -30,4 +31,16 @@ export interface ProfileResponse {
   success: boolean
   profile?: UserProfile
   error?: string
+}
+
+// Novas interfaces
+export interface UpdateProfileData {
+  nome: string;
+  avatar_url?: string;
+}
+
+export interface UpdateProfileResponse {
+  success: boolean;
+  profile?: User;
+  error?: string;
 }

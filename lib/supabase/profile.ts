@@ -1,6 +1,6 @@
 // lib/supabase/profile.ts
 import { supabase } from '../supabase'
-import { UserProfile, UserStats } from '@/types/profile'
+import { UserProfile, UserStats, UpdateProfileData } from '@/types/profile'
 
 /**
 * Busca perfil completo do usuário com estatísticas
@@ -163,4 +163,28 @@ async function calculateBestStreak(userId: string): Promise<number> {
   console.error('Erro ao calcular streak:', error)
   return 0
  }
+}
+
+/**
+* Atualiza o perfil do usuário
+*/
+export async function updateUserProfile(userId: string, data: UpdateProfileData) {
+  const { nome, avatar_url } = data;
+
+  const { data: updatedData, error } = await supabase
+    .from('treinei_usuarios')
+    .update({
+      nome,
+      avatar_url,
+    })
+    .eq('id', userId)
+    .select('id, nome, email, avatar_url, status, data_cadastro')
+    .single();
+
+  if (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    return { success: false, error: 'Não foi possível atualizar o perfil.' };
+  }
+
+  return { success: true, profile: updatedData };
 }
