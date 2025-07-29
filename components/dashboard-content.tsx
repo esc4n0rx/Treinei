@@ -102,7 +102,7 @@ export function DashboardContent() {
     <div className="p-4 space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-          Bem-vindo de volta!
+          Bem-vindo de volta! {activeGroup?.nome || 'Grupo Desconhecido'}
         </h1>
         <p className="text-muted-foreground mt-2">Continue sua jornada fitness</p>
       </motion.div>
