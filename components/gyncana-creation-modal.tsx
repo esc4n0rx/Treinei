@@ -1,24 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CalendarIcon, Loader2, ArrowRight, ArrowLeft, Trophy, Users, Clock, Upload, X } from "lucide-react";
+import { Loader2, ArrowRight, ArrowLeft, Trophy, Users, Clock, Upload, X } from "lucide-react";
 import { GroupMember } from "@/types/group";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useGroups } from "@/hooks/useGroups"; // Importando o hook
+import { useGroups } from "@/hooks/useGroups";
+import { ResponsiveDatePicker } from "@/components/shared/ResponsiveDatePicker"; // Importando o novo componente
 
 interface GyncanaCreationModalProps {
   open: boolean;
@@ -28,7 +25,7 @@ interface GyncanaCreationModalProps {
 }
 
 export function GyncanaCreationModal({ open, onOpenChange, groupMembers, groupId }: GyncanaCreationModalProps) {
-  const { createGyncana } = useGroups(); // Usando o hook
+  const { createGyncana } = useGroups();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
@@ -86,7 +83,6 @@ export function GyncanaCreationModal({ open, onOpenChange, groupMembers, groupId
     }
 
     setIsCreating(true);
-    // Correção: Usando a função do hook
     const result = await createGyncana({
       groupId,
       prizeDescription,
@@ -99,7 +95,6 @@ export function GyncanaCreationModal({ open, onOpenChange, groupMembers, groupId
     if (result.success) {
       toast.success("Gincana criada com sucesso!");
       onOpenChange(false);
-      // router.refresh() não é mais necessário aqui, o hook cuida da atualização do estado.
     } else {
       toast.error(result.error || "Falha ao criar gincana.");
     }
@@ -158,7 +153,7 @@ export function GyncanaCreationModal({ open, onOpenChange, groupMembers, groupId
 
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-               <div>
+              <div>
                 <div className="flex items-center justify-between mb-2">
                     <Label>Participantes</Label>
                     <Button variant="link" size="sm" onClick={selectAllParticipants}>
@@ -180,42 +175,29 @@ export function GyncanaCreationModal({ open, onOpenChange, groupMembers, groupId
                     </div>
                 </ScrollArea>
                 <p className="text-xs text-muted-foreground mt-2">{participantIds.length} selecionado(s)</p>
-               </div>
+              </div>
             </motion.div>
           )}
 
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Data de Início</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full justify-start text-left font-normal glass">
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {startDate ? format(startDate, "dd/MM/yyyy") : <span>Escolha uma data</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 glass-card">
-                                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={ptBR}/>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Data de Término</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full justify-start text-left font-normal glass">
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {endDate ? format(endDate, "dd/MM/yyyy") : <span>Escolha uma data</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 glass-card">
-                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={{ before: startDate || new Date() }} initialFocus locale={ptBR}/>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <Label>Data de Início</Label>
+                      <ResponsiveDatePicker 
+                        selected={startDate}
+                        onSelect={setStartDate}
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label>Data de Término</Label>
+                      <ResponsiveDatePicker 
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => date <= (startDate || new Date())}
+                      />
+                  </div>
+              </div>
             </motion.div>
           )}
         </div>

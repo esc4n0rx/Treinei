@@ -52,6 +52,13 @@ export async function createGyncana(
 }
 
 export async function getGyncanaRanking(gyncana: Gyncana): Promise<GyncanaRanking[]> {
+    console.log('🎯 Buscando ranking da gincana:', {
+        gyncanaId: gyncana.id,
+        groupId: gyncana.group_id,
+        startDate: gyncana.start_date,
+        endDate: gyncana.end_date
+    });
+
     // Passo 1: Obter a lista de IDs dos participantes da gincana
     const { data: participantsData, error: pError } = await supabase
         .from('gyncana_participants')
@@ -63,6 +70,8 @@ export async function getGyncanaRanking(gyncana: Gyncana): Promise<GyncanaRankin
         return [];
     }
     const participantIds = participantsData.map(p => p.user_id);
+    console.log('👥 Participantes da gincana:', participantIds);
+    
     if (participantIds.length === 0) return [];
 
     // Passo 2: Buscar os dados de todos os participantes
@@ -76,25 +85,43 @@ export async function getGyncanaRanking(gyncana: Gyncana): Promise<GyncanaRankin
         return [];
     }
 
-    // Passo 3: Buscar os check-ins relevantes
-    const { data: checkinsData, error: cError } = await supabase
+    // Passo 3: Buscar os check-ins usando a mesma abordagem do getGroupCheckins
+    console.log('📅 Aplicando filtros de data da gincana:', {
+        startDate: gyncana.start_date,
+        endDate: gyncana.end_date
+    });
+
+    // Usar a mesma estrutura de query do getGroupCheckins
+    let query = supabase
         .from('treinei_checkins')
-        .select('usuario_id')
+        .select('usuario_id, data_checkin, id')
         .eq('grupo_id', gyncana.group_id)
         .in('usuario_id', participantIds)
-        .gte('data_checkin', gyncana.start_date)
-        .lte('data_checkin', gyncana.end_date);
+        .order('data_checkin', { ascending: false });
 
+    // Aplicar filtros de data da mesma forma que getGroupCheckins
+    query = query
+        .gte('data_checkin', gyncana.start_date)
+        .lt('data_checkin', gyncana.end_date);
+
+    const { data: checkinsData, error: cError } = await query;
+
+    console.log('✅ Check-ins encontrados:', checkinsData?.length || 0);
+    console.log('📋 Dados dos check-ins:', checkinsData);
+    
     if (cError) {
         console.error("Error fetching check-ins for gyncana ranking:", cError);
         return [];
     }
     
-    // Passo 4: Contar os check-ins
+    // Passo 4: Contar os check-ins por usuário
     const checkinCounts = new Map<string, number>();
-    for (const checkin of checkinsData) {
-        checkinCounts.set(checkin.usuario_id, (checkinCounts.get(checkin.usuario_id) || 0) + 1);
+    for (const checkin of checkinsData || []) {
+        const currentCount = checkinCounts.get(checkin.usuario_id) || 0;
+        checkinCounts.set(checkin.usuario_id, currentCount + 1);
     }
+    
+    console.log('📊 Contagem de check-ins por usuário:', Object.fromEntries(checkinCounts));
     
     // Passo 5: Montar o ranking, garantindo que todos os participantes apareçam
     const rankingArray: Omit<GyncanaRanking, 'posicao'>[] = usersData.map(user => ({
@@ -104,15 +131,18 @@ export async function getGyncanaRanking(gyncana: Gyncana): Promise<GyncanaRankin
         checkins_count: checkinCounts.get(user.id) || 0,
     }));
 
-    // Passo 6: Ordenar e atribuir posição
+    // Passo 6: Ordenar por check-ins (descrescente) e atribuir posição
     rankingArray.sort((a, b) => b.checkins_count - a.checkins_count);
 
-    return rankingArray.map((user, index) => ({
+    const finalRanking = rankingArray.map((user, index) => ({
         ...user,
         posicao: index + 1,
     }));
-}
 
+    console.log('🏆 Ranking final da gincana:', finalRanking);
+
+    return finalRanking;
+}
 
 export async function endGyncanaAndDeclareWinner(groupId: string, currentUserId: string) {
     const { data: gyncana, error } = await supabase
