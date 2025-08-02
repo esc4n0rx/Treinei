@@ -1,7 +1,7 @@
 // components/checkin-modal.tsx
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { motion } from "framer-motion"
 import dynamic from 'next/dynamic'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { CameraInput } from "@/components/camera-input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Calendar, Clock, Loader2, MapPin, X, Building } from "lucide-react"
+import { Calendar, Clock, Loader2, MapPin, X, Building, Navigation } from "lucide-react"
 import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
+import { useGeolocation } from "@/hooks/useGeolocation"
 import { toast } from "sonner"
 
 // Import dinâmico mais simples
@@ -51,14 +52,37 @@ const formatDateForInput = (date: Date): string => {
 export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const { activeGroup } = useGroups()
   const { createCheckin, isCreating } = useCheckins()
+  const { permissionState, getLocationString, getCurrentLocation } = useGeolocation()
 
   const [finalPhoto, setFinalPhoto] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [observacao, setObservacao] = useState("")
   const [local, setLocal] = useState("")
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => formatDateForInput(new Date()))
   const [imageToCrop, setImageToCrop] = useState<string>("")
+
+  // Carregar localização automaticamente quando o modal abrir
+  useEffect(() => {
+    const loadCurrentLocation = async () => {
+      if (open && permissionState.granted && !local) {
+        setIsLoadingLocation(true)
+        try {
+          const locationString = await getLocationString()
+          if (locationString) {
+            setLocal(locationString)
+          }
+        } catch (error) {
+          console.error('Erro ao obter localização:', error)
+        } finally {
+          setIsLoadingLocation(false)
+        }
+      }
+    }
+
+    loadCurrentLocation()
+  }, [open, permissionState.granted, getLocationString, local])
 
   const handleImageSelected = useCallback((file: File) => {
     console.log('🖼️ Nova imagem selecionada:', {
@@ -76,50 +100,76 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
       toast.error("Imagem muito grande. Máximo 10MB.")
       return
     }
-    
+
     const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      console.log('📸 Definindo imagem para crop')
-      setImageToCrop(result)
-    }
-    reader.onerror = () => {
-      toast.error("Erro ao processar a imagem selecionada.")
+    reader.onload = (e) => {
+      const dataURL = e.target?.result as string
+      setImageToCrop(dataURL)
     }
     reader.readAsDataURL(file)
   }, [])
 
-  const handlePhotoRemove = useCallback(() => {
-    setFinalPhoto(null)
+  const handleCropConfirm = useCallback((croppedFile: File) => {
+    console.log('✅ Imagem cortada confirmada:', {
+      name: croppedFile.name,
+      size: croppedFile.size,
+      type: croppedFile.type
+    })
+    
+    setFinalPhoto(croppedFile)
+    
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
     }
+    
+    const newPreviewUrl = URL.createObjectURL(croppedFile)
+    setPreviewUrl(newPreviewUrl)
+    setImageToCrop("")
   }, [previewUrl])
 
-  const handleCropConfirm = useCallback((file: File) => {
-    console.log('✅ Crop confirmado:', file.name, file.size)
-    setFinalPhoto(file)
-    setPreviewUrl(URL.createObjectURL(file))
-    setImageToCrop("")
-  }, [])
-
   const handleCropCancel = useCallback(() => {
-    console.log('❌ Crop cancelado')
     setImageToCrop("")
   }, [])
 
-  const filteredSuggestions = useMemo(() =>
-    suggestedLocations.filter(loc => loc.toLowerCase().includes(local.toLowerCase())),
-    [local]
-  )
+  const handleLocationRefresh = async () => {
+    if (!permissionState.granted) {
+      toast.error("Permissão de localização não concedida")
+      return
+    }
+
+    setIsLoadingLocation(true)
+    try {
+      const locationString = await getLocationString()
+      if (locationString) {
+        setLocal(locationString)
+        toast.success("Localização atualizada!")
+      } else {
+        toast.error("Não foi possível obter a localização")
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar localização:', error)
+      toast.error("Erro ao obter localização")
+    } finally {
+      setIsLoadingLocation(false)
+    }
+  }
+
+  const filteredSuggestions = useMemo(() => {
+    return suggestedLocations.filter(suggestion =>
+      suggestion.toLowerCase().includes(local.toLowerCase())
+    )
+  }, [local])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activeGroup || !finalPhoto) {
-      if (!finalPhoto) {
-        toast.error("Por favor, adicione uma foto para o seu check-in.")
-      }
+
+    if (!finalPhoto) {
+      toast.error("Adicione uma foto do seu treino")
+      return
+    }
+
+    if (!activeGroup) {
+      toast.error("Selecione um grupo")
       return
     }
 
@@ -196,17 +246,21 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
                 <CameraInput onImageSelected={handleImageSelected} />
               ) : (
                 <div className="relative">
-                  <img 
-                    src={previewUrl || ""} 
-                    alt="Preview do treino" 
-                    className="w-full h-48 object-cover rounded-lg"
+                  <img
+                    src={previewUrl || ""}
+                    alt="Preview"
+                    className="w-full h-32 object-cover rounded-lg"
                   />
                   <Button
                     type="button"
-                    onClick={handlePhotoRemove}
-                    size="icon"
                     variant="destructive"
-                    className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => {
+                      setFinalPhoto(null)
+                      if (previewUrl) URL.revokeObjectURL(previewUrl)
+                      setPreviewUrl(null)
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -215,90 +269,125 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
             </div>
 
             <div className="space-y-3">
-              <Label htmlFor="observacao" className="text-sm font-medium">Observação (opcional)</Label>
-              <Textarea
-                id="observacao"
-                placeholder="Como foi seu treino? Compartilhe seus pensamentos..."
-                value={observacao}
-                onChange={(e) => setObservacao(e.target.value)}
-                className="glass bg-transparent resize-none"
-                rows={3}
-              />
-            </div>
+              <Label htmlFor="local" className="text-sm font-medium">
+                Localização
+              </Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                <Input
+                  id="local"
+                  value={local}
+                  onChange={(e) => {
+                    setLocal(e.target.value)
+                    setShowLocationSuggestions(e.target.value.length > 0)
+                  }}
+                  onFocus={() => setShowLocationSuggestions(local.length > 0)}
+                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
+                  placeholder={isLoadingLocation ? "Obtendo localização..." : "Digite ou deixe em branco para usar GPS"}
+                  className="pl-10 pr-10 glass"
+                  disabled={isLoadingLocation}
+                />
+                
+                {/* Botão de refresh da localização */}
+                {permissionState.granted && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1 h-8 w-8 p-0"
+                    onClick={handleLocationRefresh}
+                    disabled={isLoadingLocation}
+                  >
+                    {isLoadingLocation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Navigation className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
 
-            <div className="space-y-3 relative">
-              <Label htmlFor="local" className="text-sm font-medium">Local (opcional)</Label>
-              <Input
-                id="local"
-                placeholder="Onde você treinou?"
-                value={local}
-                onChange={(e) => {
-                  setLocal(e.target.value)
-                  setShowLocationSuggestions(e.target.value.length > 0)
-                }}
-                onFocus={() => setShowLocationSuggestions(local.length > 0)}
-                onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
-                className="glass bg-transparent"
-              />
-
-              {showLocationSuggestions && filteredSuggestions.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute z-10 w-full bg-black/80 backdrop-blur-md border border-white/20 rounded-lg mt-1 max-h-48 overflow-y-auto"
-                >
-                  {filteredSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => {
-                        setLocal(suggestion)
-                        setShowLocationSuggestions(false)
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center space-x-2"
-                    >
-                      <Building className="h-4 w-4" />
-                      <span>{suggestion}</span>
-                    </button>
-                  ))}
-                </motion.div>
+                {/* Sugestões de localização */}
+                {showLocationSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                    {filteredSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground text-sm"
+                        onClick={() => {
+                          setLocal(suggestion)
+                          setShowLocationSuggestions(false)
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Aviso se permissão não foi concedida */}
+              {!permissionState.granted && !permissionState.loading && (
+                <p className="text-xs text-muted-foreground">
+                  💡 Para preenchimento automático, habilite a localização nas configurações do navegador
+                </p>
               )}
             </div>
 
             <div className="space-y-3">
-              <Label htmlFor="datetime" className="text-sm font-medium">Data e Hora</Label>
-              <div className="relative">
-                <Input
-                  id="datetime"
-                  type="datetime-local"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="glass bg-transparent"
-                />
-                <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="observacao" className="text-sm font-medium">
+                Observação (opcional)
+              </Label>
+              <Textarea
+                id="observacao"
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                placeholder="Como foi seu treino hoje?"
+                className="min-h-[80px] glass resize-none"
+                maxLength={280}
+              />
+              <div className="text-xs text-muted-foreground text-right">
+                {observacao.length}/280
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              disabled={isCreating || !finalPhoto}
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Publicando...
-                </>
-              ) : (
-                <>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Fazer Check-in
-                </>
-              )}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
+            <div className="space-y-3">
+              <Label htmlFor="data" className="text-sm font-medium">
+                Data e Hora
+              </Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="data"
+                  type="datetime-local"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="pl-10 glass"
+                  max={formatDateForInput(new Date())}
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+             className="w-full glass hover:bg-white/10 transition-all duration-300"
+             disabled={isCreating || !finalPhoto}
+           >
+             {isCreating ? (
+               <>
+                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                 Publicando...
+               </>
+             ) : (
+               <>
+                 <Calendar className="mr-2 h-4 w-4" />
+                 Fazer Check-in
+               </>
+             )}
+           </Button>
+         </form>
+       </DialogContent>
+     </Dialog>
+   </>
+ )
 }
