@@ -1,4 +1,3 @@
-// types/geocoding.ts
 export interface OpenCageGeometry {
   lat: number;
   lng: number;
@@ -13,7 +12,6 @@ export interface OpenCageComponents {
   state?: string;
   country?: string;
   postcode?: string;
-  // Campos específicos do Brasil
   city_district?: string;
   municipality?: string;
   state_district?: string;

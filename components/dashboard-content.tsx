@@ -12,7 +12,6 @@ import { useGroups } from "@/hooks/useGroups"
 import { useCheckins } from "@/hooks/useCheckins"
 import Link from "next/link"
 
-// Função utilitária para formatar tempo de check-in
 const formatCheckinTime = (dateString: string): string => {
   try {
     const date = new Date(dateString)
@@ -51,7 +50,7 @@ export function DashboardContent() {
     }
   }, [activeGroup?.id, loadGroupCheckins])
 
-  // Mostrar loading enquanto carrega os grupos
+
   if (loading) {
     return (
       <div className="p-4 space-y-6">
@@ -63,7 +62,7 @@ export function DashboardContent() {
     )
   }
 
-  // Se não tem grupos, mostrar empty state
+
   if (!hasGroups) {
     return <GroupEmptyState />
   }
@@ -95,7 +94,6 @@ export function DashboardContent() {
     },
   ]
 
-  // Pegar apenas os 3 check-ins mais recentes para o dashboard
   const recentCheckins = checkins.slice(0, 3)
 
   return (

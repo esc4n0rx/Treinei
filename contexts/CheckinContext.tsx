@@ -52,7 +52,6 @@ function checkinReducer(state: CheckinState, action: CheckinAction): CheckinStat
         error: null
       }
     case 'ADD_CHECKIN':
-      // Adiciona o novo check-in apenas se ele não estiver já na lista
       if (state.checkins.some(c => c.id === action.payload.id)) {
         return state;
       }

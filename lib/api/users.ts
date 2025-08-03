@@ -1,11 +1,8 @@
-// lib/api/users.ts
+
 import { UserProfileResponse } from '@/types/users';
 
 const API_BASE = '/api/users';
 
-/**
- * Busca perfil público e check-ins de um usuário específico
- */
 export async function fetchUserProfileWithCheckins(userId: string): Promise<UserProfileResponse> {
   try {
     const token = localStorage.getItem('treinei_token');

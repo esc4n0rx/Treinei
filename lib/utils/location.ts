@@ -2,9 +2,6 @@
 import { LocationCoordinates } from '@/types/location';
 import { reverseGeocode } from '@/lib/api/geocoding';
 
-/**
- * Converte coordenadas em uma string de localização legível usando OpenCage API
- */
 export async function coordinatesToLocationString(
   coordinates: LocationCoordinates,
   useShortFormat: boolean = true
@@ -18,30 +15,20 @@ export async function coordinatesToLocationString(
       
       return `📍 ${address}`;
     } else {
-      console.warn('Falha no geocoding, usando coordenadas:', result.error);
-      // Fallback para coordenadas formatadas
       const lat = coordinates.latitude.toFixed(4);
       const lng = coordinates.longitude.toFixed(4);
       return `📍 ${lat}, ${lng}`;
     }
   } catch (error) {
-    console.error('Erro ao converter coordenadas:', error);
     const lat = coordinates.latitude.toFixed(4);
     const lng = coordinates.longitude.toFixed(4);
     return `📍 ${lat}, ${lng}`;
   }
 }
-
-/**
- * Verifica se a API de Geolocalização está disponível
- */
 export function isGeolocationSupported(): boolean {
   return 'geolocation' in navigator;
 }
 
-/**
- * Verifica o estado atual da permissão de localização
- */
 export async function checkLocationPermission(): Promise<PermissionState> {
   if (!isGeolocationSupported()) {
     return 'denied';
@@ -56,16 +43,10 @@ export async function checkLocationPermission(): Promise<PermissionState> {
   }
 }
 
-/**
- * Salva o estado da permissão no localStorage
- */
 export function saveLocationPermissionState(granted: boolean): void {
   localStorage.setItem('treinei_location_permission', granted ? 'granted' : 'denied');
 }
 
-/**
- * Recupera o estado salvo da permissão
- */
 export function getLocationPermissionState(): boolean | null {
   const saved = localStorage.getItem('treinei_location_permission');
   if (saved === 'granted') return true;
@@ -73,9 +54,6 @@ export function getLocationPermissionState(): boolean | null {
   return null;
 }
 
-/**
- * Valida se as coordenadas estão dentro de um range válido
- */
 export function validateCoordinates(coordinates: LocationCoordinates): boolean {
   const { latitude, longitude } = coordinates;
   
@@ -85,9 +63,6 @@ export function validateCoordinates(coordinates: LocationCoordinates): boolean {
   );
 }
 
-/**
- * Calcula a distância entre duas coordenadas usando a fórmula de Haversine
- */
 export function calculateDistance(
   coord1: LocationCoordinates,
   coord2: LocationCoordinates
@@ -108,9 +83,6 @@ export function calculateDistance(
   return distance;
 }
 
-/**
- * Verifica se duas coordenadas estão próximas (dentro de um raio especificado)
- */
 export function areCoordinatesNearby(
   coord1: LocationCoordinates,
   coord2: LocationCoordinates,

@@ -15,8 +15,6 @@ export function useGyncanaWinner() {
         setIsLoading(false);
         return;
       }
-
-      // Evitar verificações repetidas usando sessionStorage
       const checkedKey = `gyncana_winner_checked_${activeGroup.id}`;
       if (sessionStorage.getItem(checkedKey)) {
         setIsLoading(false);
@@ -39,7 +37,6 @@ export function useGyncanaWinner() {
           if (result.success && result.data) {
             setWinnerInfo(result.data);
           }
-          // Marcar como verificado para esta sessão
           sessionStorage.setItem(checkedKey, 'true');
         }
       } catch (error) {

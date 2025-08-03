@@ -1,4 +1,4 @@
-// components/location-permission-modal.tsx
+
 "use client";
 
 import { useState } from 'react';
@@ -34,12 +34,10 @@ export function LocationPermissionModal({
         });
       });
 
-      // Sucesso - permissão concedida
       localStorage.setItem('treinei_location_permission', 'granted');
       onPermissionGranted();
       onOpenChange(false);
     } catch (error: any) {
-      // Erro - permissão negada ou outro problema
       localStorage.setItem('treinei_location_permission', 'denied');
       onPermissionDenied();
       onOpenChange(false);

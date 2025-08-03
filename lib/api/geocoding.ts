@@ -6,18 +6,12 @@ const OPENCAGE_API_BASE = 'https://api.opencagedata.com/geocode/v1/json';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; 
 const COORDINATE_PRECISION = 4; 
 
-/**
- * Gera uma chave única para cache baseada nas coordenadas
- */
 function getCacheKey(lat: number, lng: number): string {
   const roundedLat = Math.round(lat * Math.pow(10, COORDINATE_PRECISION)) / Math.pow(10, COORDINATE_PRECISION);
   const roundedLng = Math.round(lng * Math.pow(10, COORDINATE_PRECISION)) / Math.pow(10, COORDINATE_PRECISION);
   return `geocoding_${roundedLat}_${roundedLng}`;
 }
 
-/**
- * Verifica se existe um endereço em cache para as coordenadas
- */
 function getCachedAddress(lat: number, lng: number): CachedLocation | null {
   try {
     const cacheKey = getCacheKey(lat, lng);
@@ -26,8 +20,7 @@ function getCachedAddress(lat: number, lng: number): CachedLocation | null {
     if (!cached) return null;
     
     const parsedCache: CachedLocation = JSON.parse(cached);
-    
-    // Verificar se o cache ainda é válido
+
     if (Date.now() - parsedCache.timestamp > CACHE_DURATION) {
       localStorage.removeItem(cacheKey);
       return null;
@@ -40,9 +33,6 @@ function getCachedAddress(lat: number, lng: number): CachedLocation | null {
   }
 }
 
-/**
- * Salva o endereço no cache
- */
 function setCachedAddress(lat: number, lng: number, address: string, shortAddress: string): void {
   try {
     const cacheKey = getCacheKey(lat, lng);
@@ -59,11 +49,7 @@ function setCachedAddress(lat: number, lng: number, address: string, shortAddres
   }
 }
 
-/**
- * Formata o endereço a partir dos componentes da resposta
- */
 function formatAddress(components: any): { address: string; shortAddress: string } {
-  // Endereço completo
   const addressParts = [];
   
   if (components.road) addressParts.push(components.road);
@@ -78,7 +64,6 @@ function formatAddress(components: any): { address: string; shortAddress: string
   
   const fullAddress = addressParts.join(', ');
   
-  // Endereço resumido (apenas rua e bairro/cidade)
   const shortParts = [];
   if (components.road) shortParts.push(components.road);
   if (components.neighbourhood) {
@@ -97,13 +82,9 @@ function formatAddress(components: any): { address: string; shortAddress: string
   };
 }
 
-/**
- * Converte coordenadas em endereço usando a API OpenCage
- */
 export async function reverseGeocode(coordinates: LocationCoordinates): Promise<GeocodingResponse> {
   const { latitude, longitude } = coordinates;
   
-  // Verificar cache primeiro
   const cached = getCachedAddress(latitude, longitude);
   if (cached) {
     return {
@@ -113,8 +94,6 @@ export async function reverseGeocode(coordinates: LocationCoordinates): Promise<
       fromCache: true
     };
   }
-  
-  // Verificar se a API key está configurada
   const apiKey = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
   if (!apiKey) {
     return {
@@ -182,9 +161,6 @@ export async function reverseGeocode(coordinates: LocationCoordinates): Promise<
   }
 }
 
-/**
- * Limpa o cache de geocoding
- */
 export function clearGeocodingCache(): void {
   try {
     const keys = Object.keys(localStorage);
@@ -198,9 +174,6 @@ export function clearGeocodingCache(): void {
   }
 }
 
-/**
- * Obtém estatísticas do cache de geocoding
- */
 export function getGeocodingCacheStats(): { totalEntries: number; totalSize: string } {
   try {
     const keys = Object.keys(localStorage);

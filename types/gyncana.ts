@@ -30,7 +30,6 @@ export interface CreateGyncanaData {
   endDate: Date;
 }
 
-// Corrigido: Usa 'posicao' para consistência com RankingUser
 export interface GyncanaRanking extends Omit<RankingUser, 'posicao'> {
   posicao: number;
 }

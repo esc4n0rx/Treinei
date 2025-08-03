@@ -1,4 +1,4 @@
-// components/auth-tabs.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -35,7 +35,6 @@ export function AuthTabs() {
   const checkAndShowLocationModal = () => {
     const permissionState = getLocationPermissionState();
     
-    // Se nunca foi perguntado sobre localização, mostrar modal
     if (permissionState === null) {
       setShowLocationModal(true);
     }
@@ -44,8 +43,6 @@ export function AuthTabs() {
   const handleSuccessfulAuth = () => {
     toast.success("Login realizado com sucesso!")
     checkAndShowLocationModal()
-    
-    // Delay para mostrar o modal antes de redirecionar
     setTimeout(() => {
       router.push("/dashboard")
     }, showLocationModal ? 2000 : 500)

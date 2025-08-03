@@ -1,4 +1,3 @@
-// components/edit-profile-modal.tsx
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -61,7 +60,6 @@ export function EditProfileModal({ open, onOpenChange, userProfile, onSuccess }:
     try {
       let avatarUrl = userProfile.avatar_url;
 
-      // Se um novo arquivo foi selecionado, faça o upload
       if (selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
@@ -91,7 +89,7 @@ export function EditProfileModal({ open, onOpenChange, userProfile, onSuccess }:
 
       if (result.success) {
         toast.success("Perfil atualizado com sucesso!");
-        onSuccess(); // Chama a função para refrescar os dados na página de perfil
+        onSuccess();
         onOpenChange(false);
       } else {
         toast.error(result.error || "Não foi possível atualizar o perfil.");

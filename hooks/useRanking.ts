@@ -28,7 +28,6 @@ export function useRanking(groupId?: string) {
         const result = await fetchGyncanaRanking(groupId);
         if (result.success && result.gyncana && result.ranking) {
           const currentUserRanking = result.ranking.find(p => p.id === user?.id);
-          // Corrigido: usa 'posicao' consistentemente
           const userPosition = currentUserRanking ? { posicao: currentUserRanking.posicao, checkins_count: currentUserRanking.checkins_count } : null;
           
           setGyncanaRanking({

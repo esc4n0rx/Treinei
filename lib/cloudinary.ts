@@ -1,6 +1,5 @@
 import { v2 as cloudinary, UploadApiOptions } from 'cloudinary'
 
-// Configurar Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -16,9 +15,6 @@ export interface CloudinaryUploadResult {
   bytes: number
 }
 
-/**
- * Upload de imagem para Cloudinary com transformações
- */
 export async function uploadToCloudinary(
   fileBuffer: Buffer,
   options: {
@@ -58,9 +54,6 @@ export async function uploadToCloudinary(
   })
 }
 
-/**
- * Remove imagem do Cloudinary
- */
 export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
   try {
     const result = await cloudinary.uploader.destroy(publicId)
@@ -71,9 +64,6 @@ export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
   }
 }
 
-/**
- * Gera URL com transformações específicas
- */
 export function buildCloudinaryUrl(
   publicId: string, 
   transformations?: object
@@ -81,9 +71,6 @@ export function buildCloudinaryUrl(
   return cloudinary.url(publicId, transformations)
 }
 
-/**
- * Extrai public_id de uma URL do Cloudinary
- */
 export function extractPublicIdFromUrl(url: string): string | null {
   try {
     const regex = /\/v\d+\/(.+)\.[^.]+$/

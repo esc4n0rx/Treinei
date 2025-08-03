@@ -1,4 +1,3 @@
-// types/group.ts
 import { Gyncana } from "./gyncana";
 
 export interface Group {

@@ -78,10 +78,8 @@ export function useGroups() {
   }
   
   const createGyncana = async (data: CreateGyncanaData) => {
-    // A lógica de loading será controlada dentro do modal
     const result = await createGyncanaApi(data);
     if (result.success) {
-      // Esta é a parte crucial: atualizar o contexto após a criação
       await context.refreshGroups();
     }
     return result;
@@ -96,6 +94,6 @@ export function useGroups() {
     isCreating,
     isJoining,
     loadingPublic,
-    createGyncana, // Expondo a nova função
+    createGyncana,
   }
 }

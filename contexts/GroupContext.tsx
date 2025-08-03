@@ -42,28 +42,22 @@ export function GroupProvider({ children }: GroupProviderProps) {
       if (result.success && result.groups) {
         setGroups(result.groups)
         
-        // --- LÓGICA CORRIGIDA ---
-        // Determina qual grupo deve estar ativo
         const currentActiveGroupId = activeGroup?.id || localStorage.getItem('activeGroupId');
         let groupToActivate: Group | null = null; // Tipagem explícita
 
         if (currentActiveGroupId) {
-            // Encontra a versão MAIS RECENTE do grupo ativo na lista recém-buscada
             const foundGroup = result.groups.find(g => g.id === currentActiveGroupId);
             groupToActivate = foundGroup || null; // Converte undefined para null
         }
 
-        // Se não encontrar (ou se não havia um ativo), define o primeiro da lista
         if (!groupToActivate && result.groups.length > 0) {
             groupToActivate = result.groups[0];
         }
-        
-        // Atualiza o estado com o objeto completo e fresco
+
         setActiveGroupState(groupToActivate);
         if (groupToActivate) {
             localStorage.setItem('activeGroupId', groupToActivate.id);
         }
-        // --- FIM DA LÓGICA CORRIGIDA ---
 
       } else {
         setGroups([])

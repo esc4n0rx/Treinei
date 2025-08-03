@@ -1,4 +1,3 @@
-// components/user-profile-content.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -35,32 +34,25 @@ function Calendar({ currentDate, checkins, onDateClick }: CalendarProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   
-  // Primeiro e último dia do mês
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   
-  // Primeiro dia da semana do mês (0 = domingo)
   const firstDayOfWeek = firstDay.getDay();
   
-  // Número de dias no mês
   const daysInMonth = lastDay.getDate();
   
-  // Criar array com todos os dias para renderizar
   const calendarDays = [];
   
-  // Dias vazios do início (mês anterior)
   for (let i = 0; i < firstDayOfWeek; i++) {
     const emptyDate = new Date(year, month, -firstDayOfWeek + i + 1);
     calendarDays.push({ date: emptyDate, isCurrentMonth: false });
   }
   
-  // Dias do mês atual
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     calendarDays.push({ date, isCurrentMonth: true });
   }
-  
-  // Completar com dias do próximo mês se necessário
+
   const totalCells = Math.ceil(calendarDays.length / 7) * 7;
   let nextMonthDay = 1;
   for (let i = calendarDays.length; i < totalCells; i++) {
@@ -71,7 +63,6 @@ function Calendar({ currentDate, checkins, onDateClick }: CalendarProps) {
 
   return (
     <div className="w-full">
-      {/* Cabeçalho dos dias da semana */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {dayNames.map((day) => (
           <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
@@ -80,7 +71,6 @@ function Calendar({ currentDate, checkins, onDateClick }: CalendarProps) {
         ))}
       </div>
       
-      {/* Grade do calendário */}
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map(({ date, isCurrentMonth }, index) => {
           const dayKey = toISODateString(date);
@@ -131,11 +121,7 @@ function Calendar({ currentDate, checkins, onDateClick }: CalendarProps) {
 export function UserProfileContent({ userId }: { userId: string }) {
   const router = useRouter();
   const { profile, loading, error } = useUserProfile(userId);
-  
-  // Estado para navegação do calendário
   const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // Estado para modal de foto expandida
   const [selectedPhoto, setSelectedPhoto] = useState<{
     url: string;
     date: string;

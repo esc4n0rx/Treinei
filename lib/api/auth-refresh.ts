@@ -1,10 +1,7 @@
-// lib/api/auth-refresh.ts
+
 import { authStorage } from '@/lib/auth-storage'
 import { AuthResponse } from '@/types/auth'
 
-/**
- * Renova o token de autenticação
- */
 export async function refreshAuthToken(): Promise<AuthResponse> {
   try {
     const authData = authStorage.getAuthData()

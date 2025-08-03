@@ -1,4 +1,3 @@
-// components/checkin-modal.tsx
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
@@ -17,7 +16,6 @@ import { useCheckins } from "@/hooks/useCheckins"
 import { useGeolocation } from "@/hooks/useGeolocation"
 import { toast } from "sonner"
 
-// Import dinâmico mais simples
 const ImageCropper = dynamic(
   () => import('./image-cropper').then(mod => mod.ImageCropper),
   {
@@ -63,7 +61,6 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
   const [selectedDate, setSelectedDate] = useState(() => formatDateForInput(new Date()))
   const [imageToCrop, setImageToCrop] = useState<string>("")
 
-  // Carregar localização automaticamente quando o modal abrir
   useEffect(() => {
     const loadCurrentLocation = async () => {
       if (open && permissionState.granted && !local) {
@@ -288,7 +285,6 @@ export function CheckinModal({ open, onOpenChange }: CheckinModalProps) {
                   disabled={isLoadingLocation}
                 />
                 
-                {/* Botão de refresh da localização */}
                 {permissionState.granted && (
                   <Button
                     type="button"

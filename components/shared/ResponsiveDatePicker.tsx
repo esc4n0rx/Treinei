@@ -43,7 +43,7 @@ export function ResponsiveDatePicker({
 
   const handleSelect = (date: Date | undefined) => {
     onSelect(date);
-    setOpen(false); // Fecha o seletor após a seleção
+    setOpen(false); 
   };
 
   const TriggerButton = (
@@ -79,7 +79,6 @@ export function ResponsiveDatePicker({
         {TriggerButton}
       </DrawerTrigger>
       <DrawerContent className="glass-card-drawer">
-        {/* Adicionei uma classe customizada para o drawer se precisar de estilos específicos */}
         <div className="p-4 pb-0">
            <Calendar
             mode="single"

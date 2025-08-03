@@ -1,7 +1,6 @@
-// components/profile-content.tsx
 "use client"
 
-import { useState } from "react" // Adicionado useState
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,14 +14,14 @@ import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { useProfile } from "@/hooks/useProfile"
 import { useAuth } from "@/hooks/useAuth"
-import { EditProfileModal } from "@/components/edit-profile-modal" // Importado
+import { EditProfileModal } from "@/components/edit-profile-modal" 
 
 export function ProfileContent() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { logout } = useAuth()
-  const { profile, loading, error, refresh } = useProfile() // Adicionado refresh
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false) // Adicionado estado do modal
+  const { profile, loading, error, refresh } = useProfile() 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false) 
 
   const handleLogout = () => {
     logout()
@@ -65,8 +64,7 @@ export function ProfileContent() {
     }
   }
 
-  // Loading state
-  if (loading && !profile) { // Ajustado para evitar piscar a tela
+  if (loading && !profile) {
     return (
       <div className="p-4 space-y-6">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6">
@@ -79,7 +77,6 @@ export function ProfileContent() {
     )
   }
 
-  // Error state
   if (error || !profile) {
     return (
       <div className="p-4 space-y-6">

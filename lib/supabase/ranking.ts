@@ -1,28 +1,23 @@
 import { supabase } from '../supabase'
 import { RankingUser, GroupRanking } from '@/types/ranking'
 
-/**
-* Busca ranking de um grupo por período
-*/
 export async function getGroupRanking(
  groupId: string, 
  periodo: 'weekly' | 'monthly',
  userId?: string
 ): Promise<{ success: boolean; ranking?: GroupRanking; error?: string }> {
  try {
-  // Calcular data de início do período
   const now = new Date()
   let startDate: Date
 
   if (periodo === 'weekly') {
    startDate = new Date(now)
-   startDate.setDate(startDate.getDate() - startDate.getDay()) // Início da semana (domingo)
+   startDate.setDate(startDate.getDate() - startDate.getDay())
    startDate.setHours(0, 0, 0, 0)
   } else {
-   startDate = new Date(now.getFullYear(), now.getMonth(), 1) // Início do mês
+   startDate = new Date(now.getFullYear(), now.getMonth(), 1)
   }
 
-  // Query para buscar ranking com join
   const { data, error } = await supabase
    .from('treinei_checkins')
    .select(`
@@ -42,12 +37,9 @@ export async function getGroupRanking(
    return { success: false, error: 'Erro ao carregar ranking' }
   }
 
-  // Contar check-ins por usuário
   const checkinCounts = new Map<string, { user: any; count: number }>()
   
-    // AJUSTE: Adicionada a tipagem explícita para o parâmetro 'checkin'
   data?.forEach((checkin: { usuario_id: string; usuario: { id: string; nome: string; avatar_url: string | null } | null }) => {
-      // Adicionada verificação para garantir que 'usuario' não é nulo
       if (!checkin.usuario) {
         return;
       }
@@ -65,24 +57,21 @@ export async function getGroupRanking(
    }
   })
 
-  // Converter para array e ordenar por count (descrescente)
   const rankingArray = Array.from(checkinCounts.entries())
    .map(([userId, data]) => ({
     id: userId,
     nome: data.user.nome,
     avatar_url: data.user.avatar_url,
     checkins_count: data.count,
-    posicao: 0, // Será definido após ordenação
+    posicao: 0,
     usuario: data.user
    }))
    .sort((a, b) => b.checkins_count - a.checkins_count)
 
-  // Atribuir posições
   rankingArray.forEach((user, index) => {
    user.posicao = index + 1
   })
 
-  // Encontrar posição do usuário atual se fornecido
   let user_position
   if (userId) {
    const userRank = rankingArray.find(rank => rank.id === userId)
@@ -107,18 +96,12 @@ export async function getGroupRanking(
  }
 }
 
-/**
-* Busca estatísticas de ranking do usuário
-*/
 export async function getUserRankingStats(
  userId: string, 
  groupId: string
 ): Promise<{ success: boolean; stats?: any; error?: string }> {
  try {
-  // Buscar posição semanal
   const weeklyRanking = await getGroupRanking(groupId, 'weekly', userId)
-  
-  // Buscar posição mensal
   const monthlyRanking = await getGroupRanking(groupId, 'monthly', userId)
 
   const stats = {

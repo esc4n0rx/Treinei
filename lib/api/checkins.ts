@@ -1,11 +1,6 @@
-// lib/api/checkins.ts
 import { CreateCheckinData, CheckinsResponse, CreateCheckinResponse, LikeCheckinResponse, CommentCheckinResponse, CommentsResponse } from '@/types/checkin'
-
 const API_BASE = '/api/checkins'
 
-/**
- * Busca check-ins de um grupo
- */
 export async function fetchGroupCheckins(groupId: string, startDate?: string, endDate?: string): Promise<CheckinsResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -34,9 +29,6 @@ export async function fetchGroupCheckins(groupId: string, startDate?: string, en
   }
 }
 
-/**
- * Cria um novo check-in
- */
 export async function createCheckinApi(data: CreateCheckinData): Promise<CreateCheckinResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -64,9 +56,6 @@ export async function createCheckinApi(data: CreateCheckinData): Promise<CreateC
   }
 }
 
-/**
- * Curtir/descurtir um check-in
- */
 export async function likeCheckinApi(checkinId: string): Promise<LikeCheckinResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -87,9 +76,6 @@ export async function likeCheckinApi(checkinId: string): Promise<LikeCheckinResp
   }
 }
 
-/**
- * Buscar comentários de um check-in
- */
 export async function fetchCheckinComments(checkinId: string): Promise<CommentsResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -108,10 +94,6 @@ export async function fetchCheckinComments(checkinId: string): Promise<CommentsR
     return { success: false, error: 'Erro de conexão' }
   }
 }
-
-/**
- * Adicionar comentário a um check-in
- */
 export async function addCheckinComment(checkinId: string, conteudo: string): Promise<CommentCheckinResponse> {
   try {
     const token = localStorage.getItem('treinei_token')

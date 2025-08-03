@@ -15,7 +15,7 @@ import { GroupMember } from "@/types/group";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useGroups } from "@/hooks/useGroups";
-import { ResponsiveDatePicker } from "@/components/shared/ResponsiveDatePicker"; // Importando o novo componente
+import { ResponsiveDatePicker } from "@/components/shared/ResponsiveDatePicker";
 
 interface GyncanaCreationModalProps {
   open: boolean;
@@ -30,15 +30,15 @@ export function GyncanaCreationModal({ open, onOpenChange, groupMembers, groupId
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Step 1 state
+
   const [prizeDescription, setPrizeDescription] = useState("");
   const [prizeImage, setPrizeImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Step 2 state
+
   const [participantIds, setParticipantIds] = useState<string[]>([]);
 
-  // Step 3 state
+
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>();
 

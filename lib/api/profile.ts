@@ -1,11 +1,8 @@
-// lib/api/profile.ts
+
 import { ProfileResponse, UpdateProfileData, UpdateProfileResponse } from '@/types/profile'
 
 const API_BASE = '/api/profile'
 
-/**
- * Busca perfil do usuário atual
- */
 export async function fetchUserProfile(): Promise<ProfileResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -25,9 +22,6 @@ export async function fetchUserProfile(): Promise<ProfileResponse> {
   }
 }
 
-/**
- * Atualiza o perfil do usuário
- */
 export async function updateUserProfileApi(data: UpdateProfileData): Promise<UpdateProfileResponse> {
   try {
     const token = localStorage.getItem('treinei_token');

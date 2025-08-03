@@ -1,4 +1,3 @@
-// contexts/AuthContext.tsx
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
@@ -17,51 +16,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isRefreshingRef = useRef(false)
   const userRef = useRef<User | null>(null)
 
-  // Manter referência atualizada do usuário
   useEffect(() => {
     userRef.current = user
   }, [user])
 
-  /**
-   * Função de logout estável
-   */
   const logout = useCallback(() => {
     setUser(null)
     authStorage.clearAuthData()
     
-    // Limpar timeout de refresh
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current)
     }
     
-    console.log('👋 Logout realizado')
   }, [])
 
-  /**
-   * Executa refresh do token - função estável
-   */
   const performRefresh = useCallback(async () => {
     if (isRefreshingRef.current || !userRef.current) return
 
     try {
       isRefreshingRef.current = true
-      console.log('🔄 Iniciando refresh do token...')
       
       const result = await refreshAuthToken()
       
       if (result.success && result.token && result.user) {
-        // Atualizar storage com novo token
         authStorage.setAuthData({
           token: result.token,
           user: result.user,
           refreshToken: result.refreshToken,
-          expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dias
+          expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000) 
         })
         
         setUser(result.user)
-        console.log('✅ Token refreshed com sucesso')
-        
-        // Agendar próximo refresh
         scheduleNextRefresh()
       } else {
         console.error('❌ Falha no refresh do token:', result.error)
@@ -75,11 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [logout])
 
-  /**
-   * Agenda o próximo refresh - função estável
-   */
   const scheduleNextRefresh = useCallback(() => {
-    // Limpar timeout anterior
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current)
     }
@@ -87,15 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const authData = authStorage.getAuthData()
     if (!authData) return
 
-    // Calcular quando fazer o próximo refresh (1 hora antes da expiração)
     const oneHour = 60 * 60 * 1000
     const timeUntilRefresh = Math.max(
       authData.expiresAt - Date.now() - oneHour,
-      60000 // Mínimo de 1 minuto
+      60000 
     )
-
-    console.log(`⏰ Próximo refresh em ${Math.round(timeUntilRefresh / 1000 / 60)} minutos`)
-
     refreshTimeoutRef.current = setTimeout(() => {
       if (authStorage.shouldRefreshToken()) {
         performRefresh()
@@ -103,23 +80,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, timeUntilRefresh)
   }, [performRefresh])
 
-  // Verificar token armazenado na inicialização - SEM DEPENDÊNCIAS INSTÁVEIS
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const authData = authStorage.getAuthData()
         
         if (authData && authData.token && authData.user) {
-          // Verificar se o token ainda é válido
           if (authData.expiresAt > Date.now()) {
             setUser(authData.user)
-            console.log('✅ Usuário autenticado via storage persistente')
           } else {
-            console.log('⚠️ Token expirado encontrado no storage')
             authStorage.clearAuthData()
           }
         } else {
-          console.log('ℹ️ Nenhum token válido encontrado')
         }
       } catch (error) {
         console.error('Erro ao inicializar autenticação:', error)
@@ -130,12 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initializeAuth()
-  }, []) // SEM DEPENDÊNCIAS - executa apenas uma vez
-
-  // Gerenciar refresh quando usuário muda
+  }, []) 
   useEffect(() => {
     if (user) {
-      // Verificar se precisa fazer refresh imediatamente
       if (authStorage.shouldRefreshToken()) {
         performRefresh()
       } else {
@@ -150,14 +119,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, performRefresh, scheduleNextRefresh])
 
-  // Verificar quando a aba volta a ficar ativa
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && userRef.current) {
-        // Verificar se o token expirou enquanto a aba estava inativa
         const authData = authStorage.getAuthData()
         if (!authData || authData.expiresAt <= Date.now()) {
-          console.log('🔄 Token expirou enquanto app estava em background')
           logout()
         } else if (authStorage.shouldRefreshToken()) {
           performRefresh()
@@ -185,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result: AuthResponse = await response.json()
 
       if (result.success && result.user && result.token) {
-        const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dias
+        const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000)
         
         authStorage.setAuthData({
           token: result.token,
@@ -195,7 +161,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         
         setUser(result.user)
-        console.log('✅ Login realizado com sucesso')
       }
 
       return result
@@ -207,7 +172,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }
-
   const loginWithGoogle = async (): Promise<AuthResponse> => {
     try {
       const result = await signInWithPopup(auth, googleProvider)
@@ -240,7 +204,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         
         setUser(authResult.user)
-        console.log('✅ Login Google realizado com sucesso')
       }
 
       return authResult
@@ -266,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result: AuthResponse = await response.json()
 
       if (result.success && result.user && result.token) {
-        const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dias
+        const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000)
         
         authStorage.setAuthData({
           token: result.token,
@@ -276,7 +239,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         
         setUser(result.user)
-        console.log('✅ Registro realizado com sucesso')
       }
 
       return result
@@ -301,7 +263,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-
 export function useAuthContext(): AuthContextType {
   const context = useContext(AuthContext)
   if (!context) {

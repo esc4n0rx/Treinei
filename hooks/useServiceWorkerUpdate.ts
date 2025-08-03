@@ -1,4 +1,3 @@
-// hooks/useServiceWorkerUpdate.ts
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,7 +14,6 @@ export function useServiceWorkerUpdate(options: ServiceWorkerUpdateOptions = {})
   const [isUpdating, setIsUpdating] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
-  // Função para verificar por atualizações
   const checkForUpdates = useCallback(async () => {
     if (!registration) return;
 
@@ -26,21 +24,17 @@ export function useServiceWorkerUpdate(options: ServiceWorkerUpdateOptions = {})
     }
   }, [registration]);
 
-  // Função para aplicar a atualização
   const applyUpdate = useCallback(async () => {
     if (!registration?.waiting) return;
 
     setIsUpdating(true);
 
-    // Enviar mensagem para o service worker ativo
     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 
-    // Aguardar a ativação do novo service worker
     const refreshTimeout = setTimeout(() => {
       window.location.reload();
     }, 1000);
 
-    // Limpar timeout se a página for recarregada antes
     const handleControllerChange = () => {
       clearTimeout(refreshTimeout);
       window.location.reload();
@@ -54,7 +48,6 @@ export function useServiceWorkerUpdate(options: ServiceWorkerUpdateOptions = {})
     };
   }, [registration]);
 
-  // Registrar e configurar service worker
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return;
@@ -65,12 +58,10 @@ export function useServiceWorkerUpdate(options: ServiceWorkerUpdateOptions = {})
         const reg = await navigator.serviceWorker.register('/sw.js');
         setRegistration(reg);
 
-        // Verificar se há uma atualização esperando
         if (reg.waiting) {
           setUpdateAvailable(true);
         }
 
-        // Escutar por novas atualizações
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           
@@ -83,7 +74,6 @@ export function useServiceWorkerUpdate(options: ServiceWorkerUpdateOptions = {})
           }
         });
 
-        // Verificar se um novo service worker assumiu o controle
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           window.location.reload();
         });
@@ -96,13 +86,11 @@ export function useServiceWorkerUpdate(options: ServiceWorkerUpdateOptions = {})
     registerSW();
   }, []);
 
-  // Verificação periódica de atualizações
   useEffect(() => {
     const interval = setInterval(checkForUpdates, checkIntervalMs);
     return () => clearInterval(interval);
   }, [checkForUpdates, checkIntervalMs]);
 
-  // Verificar atualizações quando a página volta ao foco
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {

@@ -1,11 +1,8 @@
-// lib/api/groups.ts
+
 import { CreateGroupData, JoinGroupData, GroupsResponse, GroupResponse, CreateGroupResponse, JoinGroupResponse, UpdateGroupData, UpdateMemberRoleData } from '@/types/group'
 
 const API_BASE = '/api/groups'
 
-/**
- * Busca grupos do usuário
- */
 export async function fetchUserGroups(): Promise<GroupsResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -25,9 +22,6 @@ export async function fetchUserGroups(): Promise<GroupsResponse> {
   }
 }
 
-/**
- * Busca grupos públicos
- */
 export async function fetchPublicGroups(searchQuery?: string): Promise<GroupsResponse> {
   try {
     const url = new URL(`${API_BASE}/public`, window.location.origin)
@@ -44,9 +38,6 @@ export async function fetchPublicGroups(searchQuery?: string): Promise<GroupsRes
   }
 }
 
-/**
- * Cria um novo grupo
- */
 export async function createGroupApi(data: CreateGroupData): Promise<CreateGroupResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -75,9 +66,6 @@ export async function createGroupApi(data: CreateGroupData): Promise<CreateGroup
   }
 }
 
-/**
- * Entrar em um grupo
- */
 export async function joinGroupApi(data: JoinGroupData): Promise<JoinGroupResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -98,10 +86,6 @@ export async function joinGroupApi(data: JoinGroupData): Promise<JoinGroupRespon
     return { success: false, error: 'Erro de conexão' }
   }
 }
-
-/**
- * Busca detalhes de um grupo específico
- */
 export async function fetchGroupById(groupId: string): Promise<GroupResponse> {
   try {
     const token = localStorage.getItem('treinei_token')
@@ -121,9 +105,6 @@ export async function fetchGroupById(groupId: string): Promise<GroupResponse> {
   }
 }
 
-/**
- * Atualiza um grupo
- */
 export async function updateGroupApi(groupId: string, data: UpdateGroupData): Promise<GroupResponse> {
   try {
     const token = localStorage.getItem('treinei_token');
@@ -142,9 +123,6 @@ export async function updateGroupApi(groupId: string, data: UpdateGroupData): Pr
   }
 }
 
-/**
- * Remove um membro do grupo
- */
 export async function removeMemberApi(groupId: string, memberUserId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const token = localStorage.getItem('treinei_token');
@@ -163,9 +141,6 @@ export async function removeMemberApi(groupId: string, memberUserId: string): Pr
   }
 }
 
-/**
- * Atualiza o cargo de um membro
- */
 export async function updateMemberRoleApi(groupId: string, memberUserId: string, data: UpdateMemberRoleData): Promise<{ success: boolean, error?: string }> {
   try {
     const token = localStorage.getItem('treinei_token');

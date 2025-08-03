@@ -2,14 +2,9 @@ import { supabase } from '@/lib/supabase'
 import { hashPassword, verifyPassword, generateToken } from '@/lib/auth'
 import { LoginCredentials, RegisterCredentials, AuthResponse, User } from '@/types/auth'
 
-/**
- * Registra um novo usuário no sistema
- */
 export async function registerUser(credentials: RegisterCredentials): Promise<AuthResponse> {
   try {
     const { nome, email, password } = credentials
-
-    // Verificar se o email já existe
     const { data: existingUser } = await supabase
       .from('treinei_usuarios')
       .select('email')
@@ -22,11 +17,8 @@ export async function registerUser(credentials: RegisterCredentials): Promise<Au
         error: 'Email já está cadastrado'
       }
     }
-
-    // Hash da senha
     const senhaHash = await hashPassword(password)
 
-    // Inserir usuário
     const { data, error } = await supabase
       .from('treinei_usuarios')
       .insert({
@@ -71,15 +63,9 @@ export async function registerUser(credentials: RegisterCredentials): Promise<Au
     }
   }
 }
-
-/**
- * Autentica um usuário existente
- */
 export async function loginUser(credentials: LoginCredentials): Promise<AuthResponse> {
   try {
     const { email, password } = credentials
-
-    // Buscar usuário pelo email
     const { data, error } = await supabase
       .from('treinei_usuarios')
       .select('id, nome, email, senha_hash, status, data_cadastro, avatar_url')
@@ -92,8 +78,6 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
         error: 'Email ou senha incorretos'
       }
     }
-
-    // Verificar senha
     const isValidPassword = await verifyPassword(password, data.senha_hash)
     
     if (!isValidPassword) {
@@ -102,8 +86,6 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
         error: 'Email ou senha incorretos'
       }
     }
-
-    // Verificar se usuário está ativo
     if (data.status !== 'active') {
       return {
         success: false,
@@ -135,15 +117,10 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
     }
   }
 }
-
-/**
- * Registra ou autentica usuário via Google OAuth
- */
 export async function loginWithGoogle(googleUser: { name: string; email: string; picture?: string }): Promise<AuthResponse> {
   try {
     const { name, email, picture } = googleUser
 
-    // Verificar se usuário já existe
     const { data: existingUser } = await supabase
       .from('treinei_usuarios')
       .select('id, nome, email, status, data_cadastro, avatar_url')
@@ -153,7 +130,6 @@ export async function loginWithGoogle(googleUser: { name: string; email: string;
     let user: User
 
     if (existingUser) {
-      // Usuário já existe, fazer login
       if (existingUser.status !== 'active') {
         return {
           success: false,
@@ -170,13 +146,12 @@ export async function loginWithGoogle(googleUser: { name: string; email: string;
         avatar_url: existingUser.avatar_url
       }
     } else {
-      // Criar novo usuário
       const { data, error } = await supabase
         .from('treinei_usuarios')
         .insert({
           nome: name,
           email,
-          senha_hash: '', // Google users não têm senha local
+          senha_hash: '',
           status: 'active',
           avatar_url: picture || null
         })

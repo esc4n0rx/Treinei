@@ -1,4 +1,3 @@
-// components/manage-group-content.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -64,7 +63,7 @@ export function ManageGroupContent({ id }: { id: string }) {
           description: result.group.descricao || "",
           isPrivate: result.group.tipo === 'privado',
           maxMembers: result.group.max_membros || 50,
-          weeklyGoal: 5, // Placeholder for now
+          weeklyGoal: 5,
         })
         setMembers(result.group.membros || [])
       } else {

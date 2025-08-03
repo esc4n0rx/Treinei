@@ -1,4 +1,3 @@
-// types/profile.ts
 import { User } from './auth'
 
 export interface UserProfile extends User {
@@ -33,7 +32,6 @@ export interface ProfileResponse {
   error?: string
 }
 
-// Novas interfaces
 export interface UpdateProfileData {
   nome: string;
   avatar_url?: string;

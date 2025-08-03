@@ -56,7 +56,6 @@ export function RankingContent() {
     }
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="p-4 space-y-6">
@@ -73,7 +72,6 @@ export function RankingContent() {
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="p-4 space-y-6">
@@ -92,8 +90,6 @@ export function RankingContent() {
       </div>
     )
   }
-
-  // Empty state
   if (!rankingData || rankingData.length === 0) {
     return (
       <div className="p-4 space-y-6">

@@ -1,4 +1,3 @@
-// lib/supabase/checkins.ts
 import { supabase } from '../supabase';
 import { Checkin, CreateCheckinData, CheckinComment } from '@/types/checkin';
 import { uploadToCloudinary } from '../cloudinary';
@@ -28,7 +27,6 @@ type CommentFromSupabase = Omit<CheckinComment, 'usuario'> & {
   };
 };
 
-// Tipos para as respostas das funções
 type ApiResponse<T> =
   | { success: true; } & T
   | { success: false; error: string; };
@@ -40,12 +38,6 @@ type ToggleLikeResponse = ApiResponse<{ liked: boolean }>;
 type GetCommentsResponse = ApiResponse<{ comments: CheckinComment[] }>;
 type AddCommentResponse = ApiResponse<{ comment: CheckinComment }>;
 
-
-
-/**
- * Envia notificações de check-in para membros do grupo.
- * ATUALIZADO: Agora invoca uma Edge Function dedicada.
- */
 async function triggerCheckinNotifications(checkinId: string) {
   try {
     const { error } = await supabase.functions.invoke('send-new-checkin-notification', {
@@ -54,16 +46,11 @@ async function triggerCheckinNotifications(checkinId: string) {
     if (error) {
       throw error;
     }
-    console.log(`[triggerCheckinNotifications] Edge function 'send-new-checkin-notification' for checkin ${checkinId} invoked successfully.`);
   } catch (err) {
     console.error("Erro ao invocar a edge function de notificação de check-in:", err);
-    // Não re-lançar o erro para não quebrar a experiência do usuário. O erro já foi logado.
   }
 }
 
-/**
- * Busca check-ins de um grupo específico com curtidas e comentários
- */
 export async function getGroupCheckins(groupId: string, startDate?: string, endDate?: string, limit = 50): Promise<GetCheckinsResponse> {
   try {
     let query = supabase
@@ -92,7 +79,6 @@ export async function getGroupCheckins(groupId: string, startDate?: string, endD
       return { success: false, error: 'Erro ao carregar check-ins' };
     }
 
-    // Mapeia os dados brutos para o tipo 'Checkin' final
     const checkins: Checkin[] = (data as CheckinFromSupabase[]).map(checkin => ({
       ...checkin,
       _count: {
@@ -108,10 +94,6 @@ export async function getGroupCheckins(groupId: string, startDate?: string, endD
   }
 }
 
-
-/**
- * Envia notificações de check-in para membros do grupo.
- */
 async function sendCheckinNotifications(checkin: Checkin) {
   try {
     const { data: members, error } = await supabase
@@ -140,9 +122,6 @@ async function sendCheckinNotifications(checkin: Checkin) {
   }
 }
 
-/**
- * Cria um novo check-in com debugging aprimorado
- */
 export async function createCheckin(data: CreateCheckinData, userId: string): Promise<CreateCheckinResponse> {
   try {
     const { grupo_id, foto, observacao, local, data_checkin } = data;
@@ -157,12 +136,11 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
 
         width: 1200, 
         quality: 'auto:good',
-        fetch_format: 'auto' // Converte para WebP/AVIF se o navegador suportar
+        fetch_format: 'auto'
       }
     })
     
     if (!uploadResult?.secure_url) {
-      console.error('Falha no upload:', uploadResult);
       return { success: false, error: 'Erro no upload da foto' };
     }
 
@@ -204,10 +182,6 @@ export async function createCheckin(data: CreateCheckinData, userId: string): Pr
   }
 }
 
-
-/**
-* Busca estatísticas de check-ins do usuário
-*/
 export async function getUserCheckinStats(userId: string, groupId?: string): Promise<GetUserStatsResponse> {
   try {
     let query = supabase
@@ -257,10 +231,6 @@ export async function getUserCheckinStats(userId: string, groupId?: string): Pro
     return { success: false, error: 'Erro interno' };
   }
 }
-
-/**
-* Alternar curtida em um check-in
-*/
 export async function toggleCheckinLike(checkinId: string, userId: string): Promise<ToggleLikeResponse> {
   try {
     const { data: existingLike, error: likeError } = await supabase
@@ -270,7 +240,7 @@ export async function toggleCheckinLike(checkinId: string, userId: string): Prom
       .eq('usuario_id', userId)
       .single();
 
-    if (likeError && likeError.code !== 'PGRST116') { // PGRST116 = "single row not found"
+    if (likeError && likeError.code !== 'PGRST116') { 
       throw likeError;
     }
 
@@ -297,10 +267,6 @@ export async function toggleCheckinLike(checkinId: string, userId: string): Prom
   }
 }
 
-
-/**
-* Buscar comentários de um check-in
-*/
 export async function getCheckinComments(checkinId: string): Promise<GetCommentsResponse> {
   try {
     const { data, error } = await supabase
@@ -324,12 +290,9 @@ export async function getCheckinComments(checkinId: string): Promise<GetComments
   }
 }
 
-/**
-* Adicionar comentário a um check-in
-*/
 export async function addCheckinComment(checkinId: string, userId: string, conteudo: string): Promise<AddCommentResponse> {
   try {
-    // (Lógica de verificação de permissão permanece a mesma...)
+
 
     const { data: commentData, error: commentError }: PostgrestSingleResponse<CommentFromSupabase> = await supabase
       .from('treinei_checkins_comentarios')

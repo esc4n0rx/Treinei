@@ -6,7 +6,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
-// Update the navItems array to include Groups instead of just 4 items
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Início" },
   { href: "/groups", icon: Users, label: "Grupos" },
@@ -24,7 +23,6 @@ export function BottomNavigation() {
       animate={{ y: 0 }}
       className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t"
     >
-      {/* Update the navigation to show 5 items instead of 4 */}
       <div className="flex items-center justify-around py-2">
         {navItems.map((item, index) => {
           const isActive = pathname === item.href

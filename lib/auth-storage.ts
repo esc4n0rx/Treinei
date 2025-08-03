@@ -1,4 +1,3 @@
-// lib/auth-storage.ts
 "use client"
 
 export interface AuthStorageData {
@@ -14,10 +13,6 @@ class AuthStorage {
   private readonly REFRESH_TOKEN_KEY = 'treinei_refresh_token'
   private readonly EXPIRES_KEY = 'treinei_expires_at'
 
-  /**
-   * Armazena dados de autenticação usando estratégia híbrida
-   * localStorage (persistente) + sessionStorage (temporária) + cookies (fallback)
-   */
   setAuthData(data: AuthStorageData): void {
     try {
       const authPayload = {
@@ -27,7 +22,6 @@ class AuthStorage {
         expiresAt: data.expiresAt
       }
 
-      // Strategy 1: localStorage (principal - persistente entre sessões)
       if (this.isStorageAvailable(localStorage)) {
         localStorage.setItem(this.TOKEN_KEY, data.token)
         localStorage.setItem(this.USER_KEY, JSON.stringify(data.user))
@@ -37,18 +31,15 @@ class AuthStorage {
         }
       }
 
-      // Strategy 2: sessionStorage (backup - válido apenas na sessão)
       if (this.isStorageAvailable(sessionStorage)) {
         sessionStorage.setItem(this.TOKEN_KEY, data.token)
         sessionStorage.setItem(this.USER_KEY, JSON.stringify(data.user))
         sessionStorage.setItem(this.EXPIRES_KEY, data.expiresAt.toString())
       }
 
-      // Strategy 3: Cookies (fallback para PWAs em modo standalone)
       if (typeof document !== 'undefined') {
         const expires = new Date(data.expiresAt).toUTCString()
         document.cookie = `${this.TOKEN_KEY}=${data.token}; expires=${expires}; path=/; SameSite=Strict; Secure`
-        // Não armazenar user em cookie por limitações de tamanho
       }
 
     } catch (error) {
@@ -56,33 +47,25 @@ class AuthStorage {
     }
   }
 
-  /**
-   * Recupera dados de autenticação com fallback entre storages
-   */
   getAuthData(): AuthStorageData | null {
     try {
-      // Priority 1: localStorage
       const localData = this.getFromStorage(localStorage)
       if (localData && this.isTokenValid(localData.expiresAt)) {
         return localData
       }
-
-      // Priority 2: sessionStorage
       const sessionData = this.getFromStorage(sessionStorage)
       if (sessionData && this.isTokenValid(sessionData.expiresAt)) {
         return sessionData
       }
 
-      // Priority 3: cookies (limitado)
       const cookieToken = this.getCookieValue(this.TOKEN_KEY)
       if (cookieToken) {
-        // Se temos token em cookie, tentar recuperar user do localStorage
         const userData = this.getStorageValue(this.USER_KEY, localStorage)
         if (userData) {
           return {
             token: cookieToken,
             user: JSON.parse(userData),
-            expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000) // Assumir 7 dias
+            expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000)
           }
         }
       }
@@ -94,27 +77,20 @@ class AuthStorage {
     }
   }
 
-  /**
-   * Remove todos os dados de autenticação
-   */
   clearAuthData(): void {
     try {
-      // Clear localStorage
       if (this.isStorageAvailable(localStorage)) {
         localStorage.removeItem(this.TOKEN_KEY)
         localStorage.removeItem(this.USER_KEY)
         localStorage.removeItem(this.REFRESH_TOKEN_KEY)
         localStorage.removeItem(this.EXPIRES_KEY)
       }
-
-      // Clear sessionStorage
       if (this.isStorageAvailable(sessionStorage)) {
         sessionStorage.removeItem(this.TOKEN_KEY)
         sessionStorage.removeItem(this.USER_KEY)
         sessionStorage.removeItem(this.EXPIRES_KEY)
       }
 
-      // Clear cookies
       if (typeof document !== 'undefined') {
         document.cookie = `${this.TOKEN_KEY}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
       }
@@ -123,9 +99,6 @@ class AuthStorage {
     }
   }
 
-  /**
-   * Verifica se o token está próximo do vencimento (dentro de 1 hora)
-   */
   shouldRefreshToken(): boolean {
     const data = this.getAuthData()
     if (!data) return false

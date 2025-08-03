@@ -1,4 +1,3 @@
-// types/push.ts
 export interface PushSubscriptionObject {
     endpoint: string;
     expirationTime: number | null;

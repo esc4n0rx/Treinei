@@ -1,4 +1,4 @@
-// components/camera-input.tsx
+
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"

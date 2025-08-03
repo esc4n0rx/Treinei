@@ -56,7 +56,7 @@ export interface CreateCheckinData {
   foto: File
   observacao?: string
   local?: string
-  data_checkin?: string // ISO string, se não fornecido usa data atual
+  data_checkin?: string
 }
 
 export interface CheckinsResponse {

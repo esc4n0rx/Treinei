@@ -1,4 +1,3 @@
-// components/group-details-content.tsx
 "use client"
 
 import { useState, useEffect } from "react"

@@ -1,4 +1,4 @@
-// hooks/useUserProfile.ts
+
 import { useState, useEffect, useCallback } from 'react';
 import { PublicUserProfile } from '@/types/users';
 import { fetchUserProfileWithCheckins } from '@/lib/api/users';

@@ -11,7 +11,6 @@ export function FloatingActionButton() {
   const handleClick = () => {
     const activeGroupId = localStorage.getItem("activeGroupId")
     if (!activeGroupId) {
-      // Redirect to groups page if no active group
       router.push("/groups")
     } else {
       router.push("/checkins")

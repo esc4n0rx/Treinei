@@ -60,7 +60,7 @@ export function GroupsContent() {
   const handleBackToMyGroups = () => {
     setShowAllPublicGroups(false)
     setSearchQuery("")
-    loadPublicGroups() // Recarregar grupos públicos sem filtro
+    loadPublicGroups() 
   }
 
   if (loading) {

@@ -1,4 +1,3 @@
-// lib/supabase.ts
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -10,7 +9,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Tipos para a tabela de usuários
 export interface DatabaseUser {
   id: string
   nome: string
@@ -20,8 +18,6 @@ export interface DatabaseUser {
   data_cadastro: string
   avatar_url: string | null
 }
-
-// Tipos para a tabela de grupos
 export interface DatabaseGroup {
   id: string
   nome: string
@@ -34,8 +30,6 @@ export interface DatabaseGroup {
   status: 'ativo' | 'inativo'
   max_membros: number | null
 }
-
-// Tipos para a tabela de membros dos grupos
 export interface DatabaseGroupMember {
   id: string
   grupo_id: string
@@ -44,11 +38,9 @@ export interface DatabaseGroupMember {
   data_entrada: string
   status: 'ativo' | 'inativo'
 }
-
-// NOVO: Tipo para a tabela de inscrições push
 export interface PushSubscription {
   id: number
   user_id: string
-  fcm_token: string // Apenas o token FCM
+  fcm_token: string 
   created_at: string
 }

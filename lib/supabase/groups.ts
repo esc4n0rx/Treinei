@@ -1,13 +1,9 @@
-// lib/supabase/groups.ts
 import { supabase } from '../supabase'
 import { Group, GroupMember, CreateGroupData, JoinGroupData, UpdateGroupData } from '@/types/group'
 import { hashPassword, verifyPassword } from '../auth'
-import { uploadToCloudinary } from '../cloudinary' // Import direto
+import { uploadToCloudinary } from '../cloudinary'
 import { getActiveGyncanaByGroupId } from './gyncana'
 
-/**
- * Busca todos os grupos do usuário
- */
 export async function getUserGroups(userId: string) {
   try {
     const { data, error } = await supabase
@@ -65,9 +61,6 @@ export async function getUserGroups(userId: string) {
   }
 }
 
-/**
- * Busca grupos públicos para descoberta
- */
 export async function getPublicGroups(searchQuery?: string, limit = 20) {
   try {
     let query = supabase
@@ -120,15 +113,9 @@ export async function getPublicGroups(searchQuery?: string, limit = 20) {
   }
 }
 
-/**
- * Cria um novo grupo
- */
 export async function createGroup(data: CreateGroupData, userId: string) {
   try {
     const { nome, descricao, tipo, senha, max_membros, logo } = data
-
-    console.log('Iniciando criação de grupo:', { nome, tipo, temLogo: !!logo })
-
     let senhaHash = null
     if (tipo === 'privado' && senha) {
       senhaHash = await hashPassword(senha)
@@ -152,16 +139,11 @@ export async function createGroup(data: CreateGroupData, userId: string) {
       console.error('Erro ao criar grupo no DB:', groupError)
       return { success: false, error: 'Erro ao criar grupo' }
     }
-
-    console.log('Grupo criado com ID:', groupData.id)
-
     let logoUrl = null
     if (logo) {
       try {
-        console.log('Iniciando upload da logo para Cloudinary...')
         const bytes = await logo.arrayBuffer()
         const buffer = Buffer.from(bytes)
-
         const result = await uploadToCloudinary(buffer, {
           folder: 'treinei/grupos',
           public_id: `grupo_${groupData.id}_${Date.now()}`,
@@ -176,7 +158,6 @@ export async function createGroup(data: CreateGroupData, userId: string) {
         })
         
         logoUrl = result.secure_url
-        console.log('Logo enviada com sucesso:', logoUrl)
 
         const { error: updateError } = await supabase
           .from('treinei_grupos')
@@ -190,7 +171,6 @@ export async function createGroup(data: CreateGroupData, userId: string) {
         console.error('Erro no upload da logo:', uploadError)
       }
     }
-
     const { error: memberError } = await supabase
       .from('treinei_grupos_membros')
       .insert({
@@ -206,7 +186,6 @@ export async function createGroup(data: CreateGroupData, userId: string) {
       return { success: false, error: 'Erro ao configurar administrador do grupo' }
     }
     
-    // Buscar os dados completos do grupo para retornar
     const { data: finalGroup, error: finalGroupError } = await supabase
       .from('treinei_grupos')
       .select(`
@@ -231,8 +210,6 @@ export async function createGroup(data: CreateGroupData, userId: string) {
       console.error('Erro ao buscar dados finais do grupo:', finalGroupError);
       return { success: false, error: 'Grupo criado, mas houve um erro ao buscar os dados.' };
     }
-
-    console.log('Grupo finalizado:', finalGroup)
     return { success: true, group: finalGroup }
 
   } catch (error) {
@@ -241,14 +218,10 @@ export async function createGroup(data: CreateGroupData, userId: string) {
   }
 }
 
-/**
- * Entrar em um grupo
- */
 export async function joinGroup(data: JoinGroupData, userId: string) {
   try {
     const { grupo_id, senha } = data
 
-    // Verificar se o grupo existe
     const { data: groupData, error: groupError } = await supabase
       .from('treinei_grupos')
       .select('id, nome, tipo, senha_hash, max_membros, status')
@@ -263,7 +236,6 @@ export async function joinGroup(data: JoinGroupData, userId: string) {
       return { success: false, error: 'Grupo inativo' }
     }
 
-    // Verificar se já é membro
     const { data: existingMember } = await supabase
       .from('treinei_grupos_membros')
       .select('id')
@@ -275,7 +247,6 @@ export async function joinGroup(data: JoinGroupData, userId: string) {
       return { success: false, error: 'Você já faz parte deste grupo' }
     }
 
-    // Verificar senha se grupo privado
     if (groupData.tipo === 'privado') {
       if (!senha) {
         return { success: false, error: 'Senha é obrigatória para grupos privados' }
@@ -289,7 +260,6 @@ export async function joinGroup(data: JoinGroupData, userId: string) {
       }
     }
 
-    // Verificar limite de membros
     if (groupData.max_membros) {
       const { count } = await supabase
         .from('treinei_grupos_membros')
@@ -302,7 +272,6 @@ export async function joinGroup(data: JoinGroupData, userId: string) {
       }
     }
 
-    // Adicionar como membro
     const { data: memberData, error: memberError } = await supabase
       .from('treinei_grupos_membros')
       .insert({
@@ -338,10 +307,6 @@ export async function joinGroup(data: JoinGroupData, userId: string) {
     return { success: false, error: 'Erro interno' }
   }
 }
-
-/**
- * Busca detalhes de um grupo específico
- */
 export async function getGroupById(groupId: string, userId?: string) {
   try {
     const { data, error } = await supabase
@@ -381,8 +346,6 @@ export async function getGroupById(groupId: string, userId?: string) {
       console.error('Erro ao buscar grupo:', error)
       return { success: false, error: 'Grupo não encontrado' }
     }
-
-    // Se userId fornecido, verificar se é membro
     let userMembership = null
     if (userId) {
       const membershipData = data.membros?.find((m: any) => m.usuario && 'id' in m.usuario && m.usuario.id === userId && m.status === 'ativo')
@@ -410,10 +373,6 @@ export async function getGroupById(groupId: string, userId?: string) {
   }
 }
 
-
-/**
- * Atualiza os dados de um grupo
- */
 export async function updateGroup(groupId: string, data: UpdateGroupData) {
   const { nome, descricao, isPrivate, max_membros } = data;
   
@@ -436,10 +395,6 @@ export async function updateGroup(groupId: string, data: UpdateGroupData) {
 
   return { success: true, group: updatedData };
 }
-
-/**
- * Remove um membro de um grupo
- */
 export async function removeGroupMember(groupId: string, memberUserId: string) {
   const { error } = await supabase
     .from('treinei_grupos_membros')
@@ -454,10 +409,6 @@ export async function removeGroupMember(groupId: string, memberUserId: string) {
 
   return { success: true };
 }
-
-/**
- * Altera o cargo de um membro
- */
 export async function updateMemberRole(groupId: string, memberUserId: string, role: 'administrador' | 'membro') {
   const { data, error } = await supabase
     .from('treinei_grupos_membros')

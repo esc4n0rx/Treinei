@@ -1,4 +1,3 @@
-// components/checkins-content.tsx
 "use client"
 
 import { useState, useEffect, useCallback } from "react"

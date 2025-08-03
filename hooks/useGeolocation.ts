@@ -1,4 +1,4 @@
-// hooks/useGeolocation.ts
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,7 +22,6 @@ export function useGeolocation(): GeolocationHookReturn {
   });
   const [error, setError] = useState<string | null>(null);
 
-  // Verificar estado inicial da permissão
   useEffect(() => {
     const checkInitialPermission = async () => {
       if (!isGeolocationSupported()) {
@@ -36,7 +35,6 @@ export function useGeolocation(): GeolocationHookReturn {
         return;
       }
 
-      // Verificar estado salvo primeiro
       const savedState = getLocationPermissionState();
       if (savedState !== null) {
         setPermissionState({
@@ -46,14 +44,12 @@ export function useGeolocation(): GeolocationHookReturn {
           loading: false
         });
         
-        // Se tinha permissão, tentar obter localização atual
         if (savedState) {
           await getCurrentLocation();
         }
         return;
       }
 
-      // Verificar permissão via API
       try {
         const permission = await checkLocationPermission();
         
@@ -99,7 +95,6 @@ export function useGeolocation(): GeolocationHookReturn {
             accuracy: position.coords.accuracy
           };
           
-          // Validar coordenadas
           if (!validateCoordinates(coords)) {
             setError('Coordenadas inválidas recebidas');
             setPermissionState({
@@ -121,7 +116,6 @@ export function useGeolocation(): GeolocationHookReturn {
           });
           
           saveLocationPermissionState(true);
-          console.log('✅ Permissão de localização concedida:', coords);
           resolve(true);
         },
         (error) => {
@@ -173,8 +167,6 @@ export function useGeolocation(): GeolocationHookReturn {
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy
           };
-          
-          // Validar coordenadas
           if (!validateCoordinates(coords)) {
             console.error('Coordenadas inválidas:', coords);
             setError('Coordenadas inválidas recebidas');
@@ -183,7 +175,6 @@ export function useGeolocation(): GeolocationHookReturn {
           }
           
           setCoordinates(coords);
-          console.log('📍 Localização atual obtida:', coords);
           resolve(coords);
         },
         (error) => {
@@ -211,7 +202,6 @@ export function useGeolocation(): GeolocationHookReturn {
     
     try {
       const locationString = await coordinatesToLocationString(coords, useShortFormat);
-      console.log('✅ String de localização obtida:', locationString);
       return locationString;
     } catch (error) {
       console.error('Erro ao obter string de localização:', error);

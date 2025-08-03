@@ -1,4 +1,3 @@
-// components/create-group-content.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -18,7 +17,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, Info, Settings, Globe, Lock, Loader2, Upload, X } from "lucide-react"
 
-// Categorias disponíveis para grupos
 const groupCategories = [
   { id: "fitness", label: "Fitness", color: "bg-red-500" },
   { id: "musculacao", label: "Musculação", color: "bg-blue-500" },
@@ -37,7 +35,6 @@ interface FormData {
 }
 
 export function CreateGroupContent() {
-  // Verificação de hidratação para evitar problemas de SSR
   const [isMounted, setIsMounted] = useState(false)
   const { isAuthenticated, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -54,19 +51,19 @@ export function CreateGroupContent() {
     max_membros: "",
   })
 
-  // Controle de hidratação
+
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
-  // Redirecionamento se não autenticado
+
   useEffect(() => {
     if (isMounted && !authLoading && !isAuthenticated) {
       router.push('/')
     }
   }, [isMounted, isAuthenticated, authLoading, router])
 
-  // Não renderizar até a hidratação estar completa
+
   if (!isMounted || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -78,7 +75,6 @@ export function CreateGroupContent() {
     )
   }
 
-  // Se não autenticado, não renderizar conteúdo
   if (!isAuthenticated) {
     return null
   }

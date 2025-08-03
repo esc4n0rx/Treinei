@@ -1,13 +1,8 @@
-// lib/supabase/profile.ts
 import { supabase } from '../supabase'
 import { UserProfile, UserStats, UpdateProfileData } from '@/types/profile'
 
-/**
-* Busca perfil completo do usuário com estatísticas
-*/
 export async function getUserProfile(userId: string): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
 try {
- // Buscar dados básicos do usuário
  const { data: userData, error: userError } = await supabase
         .from('treinei_usuarios')
         .select('id, nome, email, avatar_url, status, data_cadastro')
@@ -18,12 +13,10 @@ try {
      return { success: false, error: 'Usuário não encontrado' }
      }
 
-
     const stats = await getUserStats(userId)
     if (!stats.success) {
      return { success: false, error: 'Erro ao carregar estatísticas' }
     }
-
     const { data: gruposData } = await supabase
     .from('treinei_grupos_membros')
     .select(`
@@ -35,7 +28,6 @@ try {
     `)
     .eq('usuario_id', userId)
     .eq('status', 'ativo')
-
 
     const grupos = gruposData?.map((item: { papel: string; grupo: { id: string; nome: string } }) => ({
     id: item.grupo.id,
@@ -64,13 +56,11 @@ try {
 
 export async function getUserStats(userId: string): Promise<{ success: boolean; stats?: UserStats; error?: string }> {
  try {
-  // Total de check-ins
   const { count: totalCheckins } = await supabase
    .from('treinei_checkins')
    .select('id', { count: 'exact', head: true })
    .eq('usuario_id', userId)
 
-  // Check-ins da semana
   const startOfWeek = new Date()
   startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
   startOfWeek.setHours(0, 0, 0, 0)
@@ -81,7 +71,6 @@ export async function getUserStats(userId: string): Promise<{ success: boolean; 
    .eq('usuario_id', userId)
    .gte('data_checkin', startOfWeek.toISOString())
 
-  // Check-ins do mês
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
@@ -92,7 +81,6 @@ export async function getUserStats(userId: string): Promise<{ success: boolean; 
    .eq('usuario_id', userId)
    .gte('data_checkin', startOfMonth.toISOString())
 
-  // Último check-in
   const { data: lastCheckin } = await supabase
    .from('treinei_checkins')
    .select('data_checkin')
@@ -101,14 +89,12 @@ export async function getUserStats(userId: string): Promise<{ success: boolean; 
    .limit(1)
    .single()
 
-  // Contagem de grupos
   const { count: gruposCount } = await supabase
    .from('treinei_grupos_membros')
    .select('id', { count: 'exact', head: true })
    .eq('usuario_id', userId)
    .eq('status', 'ativo')
 
-  // Calcular melhor streak (implementação simplificada)
   const melhor_streak = await calculateBestStreak(userId)
 
   const stats: UserStats = {
@@ -127,9 +113,6 @@ export async function getUserStats(userId: string): Promise<{ success: boolean; 
  }
 }
 
-/**
-* Calcula o melhor streak do usuário
-*/
 async function calculateBestStreak(userId: string): Promise<number> {
  try {
   const { data: checkins } = await supabase
@@ -165,9 +148,6 @@ async function calculateBestStreak(userId: string): Promise<number> {
  }
 }
 
-/**
-* Atualiza o perfil do usuário
-*/
 export async function updateUserProfile(userId: string, data: UpdateProfileData) {
   const { nome, avatar_url } = data;
 

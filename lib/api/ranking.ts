@@ -2,9 +2,6 @@ import { RankingResponse } from '@/types/ranking'
 
 const API_BASE = '/api/ranking'
 
-/**
- * Busca ranking de um grupo
- */
 export async function fetchGroupRanking(
   groupId: string, 
   periodo: 'weekly' | 'monthly'
